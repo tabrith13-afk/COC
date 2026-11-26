@@ -694,9 +694,10 @@ async function getModel(cfg, firebaseConfig, modelName, system) {
 // 오류 종류 나누기
 function aiErrorKind(e) {
   const m = String((e && e.message) || e);
-  if (/high demand|overload|unavailable|\b50[03]\b|\b429\b|quota|rate/i.test(m)) return 'busy';
-  if (/app.?check|attestation|\b403\b|permission|unauthori/i.test(m)) return 'appcheck';
-  if (/\b404\b|not found|is not supported|unknown model/i.test(m)) return 'model';
+  const code = (m.match(/\[(\d{3})\s*\]/) || m.match(/\b(40[134]|429|50[03])\b/) || [])[1];
+  if (/app.?check|attestation/i.test(m) || code === '401' || code === '403') return 'appcheck';
+  if (code === '404' || /not found|is not supported|unknown model/i.test(m)) return 'model';
+  if (['429', '500', '503'].includes(code) || /high demand|overload|unavailable|quota|rate.?limit|resource.?exhausted/i.test(m)) return 'busy';
   if (/blocked|safety/i.test(m)) return 'safety';
   return 'other';
 }
@@ -1411,7 +1412,7 @@ function keeper() {
       ks.fails = (ks.fails || 0) + 1; ks.lastResults = [...results, ...ks.lastResults];
       const kind = aiErrorKind(e);
       ks.retryAt = now() + (kind === 'busy' ? 20000 : 8000);
-      journal({ task, error: `${kind === 'busy' ? '모델이 붐빔' : 'AI 호출 실패'}: ${String(e.message || e).slice(0, 160)}` });
+      journal({ task, error: `${{ busy: '모델이 붐빔', appcheck: 'App Check 거부(401/403) — 설정의 사이트 키·디버그 모드·등록 도메인 확인', model: '모델 이름 오류', safety: '안전 필터에 막힘' }[kind] || 'AI 호출 실패'}: ${String(e.message || e).slice(0, 500)}` });
       if (ks.fails >= 3 || kind === 'appcheck' || kind === 'model') { ks.gm.paused = true; journal({ task: '멈춤', note: '연달아 실패해 자율 진행을 멈췄습니다. 설정을 확인한 뒤 다시 시작하세요.' }); }
       aiBusy = false; aiStatus = ''; net.update('meta', { ai: 'waiting' }); save(); render(); return;
     }
