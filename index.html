@@ -627,7 +627,7 @@ const TASKS = {
   next: '이야기가 막혔다. 지금 장면에서 플레이어를 자연스럽게 다음으로 이끌 묘사와 판정·단서를 제안하라.',
 };
 
-function buildContext({ scn, keeperMd, scene, flags, party, logs, chat, history, actions, task, revealed }) {
+function buildContext({ scn, keeperMd, scene, flags, party, logs, chat, history, actions, task, revealed, extra, taskText }) {
   const strip = (s) => {
     if (!s) return null;
     const { id, title, act, read, keeper, checks, sanity, clues, handouts, npcs, exits } = s;
@@ -644,9 +644,10 @@ function buildContext({ scn, keeperMd, scene, flags, party, logs, chat, history,
     최근_굴림: logs.slice(-12).map((l) => ({ 누가: l.name, 판정: l.title, 판정id: l.checkId || null, 굴림: l.roll, 결과: l.levelKo, 성공: l.success, 비고: l.detail || '' })),
     최근_플레이어_말: chat.slice(-12).map((c) => `${c.name}: ${c.text}`),
     직전_AI_묘사: history.slice(-4),
+    ...(extra || {}),
   };
   const guide = keeperMd ? `\n\n[수호자 안내(keeper.md) — 비밀 포함, narration에 쓰지 말 것]\n${keeperMd.slice(0, 9000)}` : '';
-  const ask = `[이번 요청]\n${TASKS[task] || TASKS.respond}${actions ? `\n수호자가 덧붙인 상황: ${actions}` : ''}`;
+  const ask = `[이번 요청]\n${taskText || TASKS[task] || TASKS.respond}${actions ? `\n수호자가 덧붙인 상황: ${actions}` : ''}`;
   return `[게임 상황 JSON]\n${JSON.stringify(ctx, null, 1)}${guide}\n\n${ask}`;
 }
 
@@ -661,15 +662,16 @@ function parseAI(text) {
   if (a >= 0 && b > a) t = t.slice(a, b + 1);
   try {
     const o = JSON.parse(t);
-    return { narration: o.narration || '', npcLines: o.npcLines || [], keeperNote: o.keeperNote || '', suggestions: Array.isArray(o.suggestions) ? o.suggestions : [] };
+    const sug = Array.isArray(o.suggestions) ? o.suggestions : Array.isArray(o.actions) ? o.actions : [];
+    return { narration: o.narration || '', npcLines: Array.isArray(o.npcLines) ? o.npcLines : [], keeperNote: o.keeperNote || '', memory: typeof o.memory === 'string' ? o.memory : '', suggestions: sug };
   } catch {
-    return { narration: String(text).trim(), npcLines: [], keeperNote: 'JSON 형식이 아니어서 전체를 묘사로 넣었습니다.', suggestions: [] };
+    return { narration: String(text).trim(), npcLines: [], keeperNote: 'JSON 형식이 아니어서 전체를 묘사로 넣었습니다.', memory: '', suggestions: [], bad: true };
   }
 }
 
 const cache = new Map();
-async function getModel(cfg, firebaseConfig, modelName) {
-  const key = JSON.stringify([modelName, cfg.siteKey, cfg.debug]);
+async function getModel(cfg, firebaseConfig, modelName, system) {
+  const key = JSON.stringify([modelName, cfg.siteKey, cfg.debug, system.length, system.slice(0, 40)]);
   if (cache.has(key)) return cache.get(key);
   const { initializeApp, getApps } = await import(`${SDK}/firebase-app.js`);
   const { getAI, getGenerativeModel, GoogleAIBackend } = await import(`${SDK}/firebase-ai.js`);
@@ -682,7 +684,7 @@ async function getModel(cfg, firebaseConfig, modelName) {
   const ai = getAI(app, { backend: new GoogleAIBackend() });
   const model = getGenerativeModel(ai, {
     model: modelName,
-    systemInstruction: AI_SYSTEM,
+    systemInstruction: system,
     generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
   });
   cache.set(key, model);
@@ -701,15 +703,15 @@ function aiErrorKind(e) {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 붐비면 잠시 쉬었다 다시, 그래도 안 되면 예비 모델로
-async function askGemini(cfg, firebaseConfig, user, onStatus = () => {}) {
-  if (window.__AI_MOCK) return { text: await window.__AI_MOCK(AI_SYSTEM, user), model: 'mock' };
+async function askGemini(cfg, firebaseConfig, user, onStatus = () => {}, system = AI_SYSTEM) {
+  if (window.__AI_MOCK) return { text: await window.__AI_MOCK(system, user), model: 'mock' };
   const models = [cfg.model || 'gemini-3.5-flash', ...String(cfg.fallback || '').split(',').map((x) => x.trim()).filter(Boolean)];
   let last;
   for (const name of models) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         onStatus(attempt ? `${name} 다시 시도 ${attempt}/2…` : `${name}에 묻는 중…`);
-        const model = await getModel(cfg, firebaseConfig, name);
+        const model = await getModel(cfg, firebaseConfig, name, system);
         const r = await model.generateContent(user);
         return { text: r.response.text(), model: name };
       } catch (e) {
@@ -725,7 +727,210 @@ async function askGemini(cfg, firebaseConfig, user, onStatus = () => {}) {
 
 return { AI_SYSTEM, buildContext, manualPrompt, parseAI, aiErrorKind, askGemini };
 })();
+const { RULE_BRIEF, AUTO_SYSTEM, AUTO_TASKS, freeSanOk, condFlags, knownSkill, vetActions, decide, clockMinutes } = (() => {
+// AI 단독 수호자(자율 진행) — 규칙 요약, 행동 검사, 다음 차례 판단.
+// 주사위와 수치는 언제나 툴(엔진)이 처리한다. AI는 묘사하고, 허용된 행동만 고를 수 있다.
+
+const RULE_BRIEF = `[크툴루의 부름 7판 진행 규칙 요약 — 툴이 계산하고, 너는 언제 무엇을 요청할지만 정한다]
+- 판정: 실패해도 이야기가 흥미롭게 이어질 때만 요청한다. 당연히 되는 일, 실패할 이유가 없는 일은 판정 없이 묘사로 성공시킨다.
+- 한 행동에는 판정 하나. 같은 탐사자가 같은 일을 다시 굴리게 하지 않는다(다시 하려면 '강행'이고, 강행은 탐사자가 스스로 버튼으로 한다).
+- 난이도: 보통(regular)이 기본. 상대가 유능하거나 상황이 나쁘면 어려움(hard). 거의 불가능하면 극단적(extreme). 근거 없이 올리지 않는다.
+- 대인관계(말재주·매혹·설득·위협): 상대 NPC 기능이 50 이상이면 어려움을 쓴다.
+- 지식·아이디어 판정: 탐사자가 막혔을 때 실마리를 주는 용도. '아이디어'는 지능, '지식'은 교육 판정이다.
+- 운 판정: 우연에 맡길 일(마침 그 자리에 있었는지 등)에만 쓴다.
+- 이성: 끔찍한 것을 처음 볼 때만. 같은 원인으로는 한 번만. 툴이 손실을 굴리고 광기도 계산한다.
+- 전투: NPC가 공격하면 npcAttack 행동을 쓴다. 툴이 NPC 공격을 굴리고, 맞으면 탐사자에게 회피를 요청하고, 피해도 툴이 준다. 탐사자의 공격은 탐사자가 말하면 근접전/사격 판정을 요청한다. 피해를 직접 주는 행동은 없다.
+- 판정 결과 해석은 '판정_해석'의 문구(시나리오에 적힌 결과)를 따른다. 그 결과의 효과(진행 표시, 핸드아웃, 피해 등)는 툴이 이미 적용했다.
+- 장면 이동은 '장면_출구' 중 '갈수있음'이 true인 곳으로만 한다. 탐사자들이 그쪽으로 가겠다고 했거나, 장면의 일이 끝났을 때만 옮긴다.
+- 결말 장면에 들어가면 결말을 묘사하고 더 이상 판정을 요청하지 않는다.`;
+
+const AUTO_SYSTEM = `너는 크툴루의 부름 7판 TRPG의 수호자(게임 마스터)다. 사람 수호자 없이 직접 게임을 진행한다. 툴이 주사위와 수치를 처리하고, 너는 묘사·NPC 연기·판정 요청·장면 진행을 맡는다.
+지켜야 할 것:
+1. 주사위를 굴리거나 결과를 지어내지 않는다. 판정이 필요하면 actions에 넣고, 굴림 결과를 받은 뒤에 결과를 묘사한다.
+2. narration은 탐사자에게 그대로 보이는 이야기 속 묘사다. id(예: intro_forest), 기능 수치, 진행 설명은 narration에 쓰지 않는다. 판정을 요청할 때 narration은 판정 직전 장면까지만 쓰고, 무엇을 굴리는지는 툴이 따로 알려 준다.
+3. 수호자 메모, NPC의 비밀(secret), 시나리오의 전말, 공개하지 않은 핸드아웃 내용은 탐사자가 정당하게 알아낼 때까지 narration·npcLines에 쓰지 않는다.
+4. 시나리오의 장면 read와 keeper 메모, keeper.md를 근거로 진행한다. 시나리오에 없는 큰 사건이나 새 NPC를 만들지 않는다. 탐사자가 시나리오 밖 행동을 하면 그럴듯하게 받아 주되 장면의 흐름으로 부드럽게 돌려보낸다.
+5. 공포는 소리, 냄새, 그림자, 어긋난 디테일로 암시한다. 문장은 한국어 경어체(~합니다), 2~6문장. NPC 대사는 npcLines에 따로 쓴다.
+6. 탐사자가 무엇을 하는지 대신 정하지 않는다. 묘사 끝에는 탐사자들이 다음 행동을 고를 수 있게 상황을 열어 둔다.
+7. memory에는 지금까지의 줄거리를 수호자용으로 갱신해 적는다(누가 무엇을 알아냈는지, 약속, 위험 요소). 600자 이내.
+8. 반드시 아래 JSON 하나만 출력한다.
+{
+  "narration": "탐사자에게 보일 묘사",
+  "npcLines": [{"npc": "npc id", "line": "대사"}],
+  "keeperNote": "판단 근거 1~2문장 (탐사자에게 안 보임)",
+  "memory": "갱신한 줄거리 요약",
+  "actions": [
+    {"type": "check", "checkId": "장면 판정 id 또는 null", "skill": "기능 이름", "to": "탐사자 pid 또는 all", "difficulty": "regular|hard|extreme", "reason": "이유"},
+    {"type": "sanity", "sanId": "장면 이성 id 또는 null", "loss": "0/1D4", "to": "pid 또는 all", "reason": "이유"},
+    {"type": "reveal", "handout": "핸드아웃 id", "reason": "이유"},
+    {"type": "flag", "flag": "진행 표시 id", "reason": "이유"},
+    {"type": "npcAttack", "npc": "npc id", "attack": "공격 이름", "to": "탐사자 pid", "reason": "이유"},
+    {"type": "scene", "to": "장면 id", "reason": "이유"}
+  ]
+}
+할 일이 없으면 actions는 빈 배열로 두고 탐사자의 행동을 기다린다.
+
+${RULE_BRIEF}`;
+
+const AUTO_TASKS = {
+  open: '새 장면이 시작됐다. 장면 read를 바탕으로 탐사자들의 상황에 맞게 도입을 묘사하라. 들어오자마자 필요한 판정(예: 즉시 눈에 띄는 것)이 있을 때만 요청하라.',
+  respond: '탐사자들의 최근 행동과 말(최근_플레이어_말 중 새_입력)에 수호자로서 응답하라. 필요한 판정만 요청하고, 판정이 필요 없으면 결과를 바로 묘사하라.',
+  result: '방금 끝난 판정 결과(판정_해석)를 이야기로 풀어 묘사하라. 결과에 따라 이어지는 판정이나 장면 이동이 필요하면 actions에 넣어라.',
+  next: '한동안 진행이 없다. 지금 장면에서 탐사자들이 할 수 있는 일을 이야기 속에서 자연스럽게 드러내라(소리, NPC의 말, 눈에 띄는 물건). 판정은 꼭 필요할 때만.',
+  ending: '결말 장면이다. 탐사자들이 겪은 일을 바탕으로 결말을 묘사하라. 판정은 요청하지 않는다.',
+};
+
+const DIFF = { regular: 'regular', hard: 'hard', extreme: 'extreme', 보통: 'regular', 어려움: 'hard', 극단적: 'extreme' };
+
+// 무료(장면에 없는) 이성 손실은 작게만 허용
+function freeSanOk(loss) {
+  const m = String(loss || '').replace(/\s+/g, '').toUpperCase().match(/^(\d|1D[2-4])\/(\d|1D([2-6])|1D10)$/);
+  if (!m) return false;
+  return !/1D10/.test(m[2]);
+}
+
+// 조건식: "a&!b"
+function condFlags(cond, flags) {
+  if (!cond) return true;
+  return String(cond).split('&').every((t) => { t = t.trim(); return t.startsWith('!') ? !flags[t.slice(1)] : !!flags[t]; });
+}
+
+// 기능 이름이 알려진 것인지
+function knownSkill(rules, name) {
+  const n = String(name || '').trim();
+  if (!n) return false;
+  if (['운', '이성', '지식', '아이디어'].includes(n)) return true;
+  if (rules.characteristics.some((c) => c.ko === n)) return true;
+  for (const s of rules.skills.list) {
+    if (s.ko === n || n.startsWith(s.ko + ' (')) return true;
+    for (const c of s.children || []) if (`${s.ko} (${c.ko})` === n || c.ko === n) return true;
+  }
+  return false;
+}
+
+/**
+ * AI가 고른 행동을 검사한다.
+ * st: { rules, scn, scene, flags, once, pids, revealed:Set, openReqs:[], rolled:{checkId:[pid]} }
+ * 돌려줌: { ok:[행동], rejected:[{a, why}] }
+ */
+function vetActions(list, st) {
+  const ok = [], rejected = [];
+  const no = (a, why) => rejected.push({ a, why });
+  const s = st.scene || {};
+  const count = { check: 0, sanity: 0, npcAttack: 0 };
+  const sceneText = JSON.stringify(s);
+  const toOk = (to) => (to === 'all' || st.pids.includes(to) ? to : st.pids.length === 1 ? st.pids[0] : 'all');
+  let hasRoll = false;
+  for (const a0 of Array.isArray(list) ? list : []) {
+    const a = { ...a0 };
+    switch (a.type) {
+      case 'check': {
+        if (count.check >= 2) { no(a, '한 차례에 판정은 2개까지'); break; }
+        const c = (s.checks || []).find((x) => x.id === a.checkId);
+        a.to = toOk(a.to);
+        a.difficulty = DIFF[a.difficulty] || 'regular';
+        if (c) {
+          if (c.if && !condFlags(c.if, st.flags)) { no(a, `조건 미충족(${c.if})`); break; }
+          const done = st.rolled[c.id] || [];
+          const targets = a.to === 'all' ? st.pids : [a.to];
+          if (targets.length && targets.every((p) => done.includes(p))) { no(a, '이미 굴린 판정'); break; }
+          if (st.openReqs.some((r) => r.checkId === c.id)) { no(a, '이미 요청 중'); break; }
+          a.check = c;
+        } else {
+          a.checkId = null;
+          if (!knownSkill(st.rules, a.skill)) { no(a, `알 수 없는 기능(${a.skill})`); break; }
+          if (st.openReqs.some((r) => !r.checkId && r.skill === a.skill && (r.to === a.to || r.to === 'all'))) { no(a, '이미 요청 중'); break; }
+        }
+        count.check++; hasRoll = true; ok.push(a); break;
+      }
+      case 'sanity': {
+        if (count.sanity >= 1) { no(a, '한 차례에 이성 판정은 1개까지'); break; }
+        a.to = toOk(a.to);
+        const z = (s.sanity || []).find((x) => x.id === a.sanId);
+        if (z) {
+          if (z.once && st.once[z.once]) { no(a, '이미 한 이성 판정'); break; }
+          if (z.if && !condFlags(z.if, st.flags)) { no(a, `조건 미충족(${z.if})`); break; }
+          if (st.openReqs.some((r) => r.sanId === z.id)) { no(a, '이미 요청 중'); break; }
+          a.san = z;
+        } else {
+          a.sanId = null;
+          if (!freeSanOk(a.loss)) { no(a, `장면에 없는 이성 손실이 너무 큼(${a.loss})`); break; }
+        }
+        count.sanity++; hasRoll = true; ok.push(a); break;
+      }
+      case 'reveal': {
+        const allowed = new Set([...(s.handouts || []), ...(s.clues || []).map((c) => c.handout).filter(Boolean)]);
+        if (!allowed.has(a.handout)) { no(a, '이 장면의 핸드아웃이 아님'); break; }
+        if (st.revealed.has(a.handout)) { no(a, '이미 공개함'); break; }
+        ok.push(a); break;
+      }
+      case 'flag': {
+        if (!(st.scn.flags || []).some((f) => f.id === a.flag)) { no(a, '없는 진행 표시'); break; }
+        if (!sceneText.includes(`"${a.flag}"`)) { no(a, '이 장면과 관계없는 진행 표시'); break; }
+        if (st.flags[a.flag]) { no(a, '이미 켜짐'); break; }
+        ok.push(a); break;
+      }
+      case 'npcAttack': {
+        if (count.npcAttack >= 1) { no(a, '한 차례에 NPC 공격은 1번'); break; }
+        const n = (st.scn.npcs || []).find((x) => x.id === a.npc);
+        if (!n || !(n.attacks || []).length) { no(a, '공격할 수 있는 NPC가 아님'); break; }
+        if (!st.pids.includes(a.to)) { no(a, '대상 탐사자가 없음'); break; }
+        a.atk = n.attacks.find((x) => x.name === a.attack) || n.attacks.find((x) => x.name.startsWith(String(a.attack || '').split(' ')[0])) || n.attacks[0];
+        a.npcObj = n;
+        count.npcAttack++; hasRoll = true; ok.push(a); break;
+      }
+      case 'scene': {
+        const ex = (s.exits || []).find((e) => e.to === a.to && condFlags(e.if, st.flags));
+        if (!ex) { no(a, '갈 수 없는 장면(출구가 아니거나 조건 미충족)'); break; }
+        ok.push(a); break;
+      }
+      case 'wait': break;
+      default: no(a, '허용되지 않은 행동');
+    }
+  }
+  // 굴림이 남았거나 요청한 판정이 있으면 장면 이동은 미룬다
+  const out = [];
+  let moved = false;
+  for (const a of ok) {
+    if (a.type !== 'scene') { out.push(a); continue; }
+    if (hasRoll || st.openReqs.length) rejected.push({ a, why: '판정이 끝난 뒤에 이동' });
+    else if (moved) rejected.push({ a, why: '장면 이동은 하나만' });
+    else { moved = true; out.push(a); }
+  }
+  return { ok: out, rejected };
+}
+
+/**
+ * 지금 AI가 무엇을 해야 하는지 정한다.
+ * s: { needOpen, ended, openReqs, needInt, newResults, newChat, go, quietMs, quietSec, chain, maxChain, idleMs, idleSec }
+ */
+function decide(s) {
+  if (s.ended) return { task: null, why: '결말까지 진행했습니다' };
+  if (s.chain >= s.maxChain) return { task: null, why: `탐사자 입력 없이 ${s.maxChain}번 연속 진행해서 잠시 멈췄습니다`, stop: true };
+  if (s.openReqs > 0) return { task: null, why: '탐사자들의 판정을 기다리는 중' };
+  if (s.needInt) return { task: null, why: '지능 판정을 기다리는 중' };
+  if (s.needOpen) return { task: s.isEnding ? 'ending' : 'open' };
+  if (s.newResults > 0) return { task: 'result' };
+  if (s.newChat > 0) {
+    if (s.go || s.quietMs >= s.quietSec * 1000) return { task: 'respond' };
+    return { task: null, why: '탐사자들이 말을 마치길 기다리는 중', retryIn: s.quietSec * 1000 - s.quietMs + 200 };
+  }
+  if (s.idleSec && s.idleMs >= s.idleSec * 1000 && !s.nudged) return { task: 'next' };
+  return { task: null, why: '탐사자들의 행동을 기다리는 중' };
+}
+
+// 시계 길이(예: "30분", "1시간") → 분
+function clockMinutes(c) {
+  const t = String((c && (c.voice || c.text)) || '');
+  const h = t.match(/(\d+)\s*시간/); const m = t.match(/(\d+)\s*분/);
+  const v = (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+  return v || 60;
+}
+
+return { RULE_BRIEF, AUTO_SYSTEM, AUTO_TASKS, freeSanOk, condFlags, knownSkill, vetActions, decide, clockMinutes };
+})();
 // 크툴루의 부름 테이블 — 로비 · 수호자 · 탐사자 · 테이블 화면
+
 
 
 
@@ -835,7 +1040,7 @@ function shrinkImage(file, max = 1100) {
 
 // ───────── 방 연결과 공유 상태 ─────────
 let net = null;
-const room = { meta: null, table: null, clock: null, handouts: {}, inv: {}, req: {}, log: {}, chat: {} };
+const room = { meta: null, table: null, clock: null, handouts: {}, inv: {}, req: {}, log: {}, chat: {}, story: {} };
 function subscribe() {
   for (const k of Object.keys(room)) net.on(k, (v) => { room[k] = v || (k === 'meta' || k === 'table' || k === 'clock' ? null : {}); render(); });
 }
@@ -900,7 +1105,8 @@ function lobby() {
 function keeper() {
   const KS = `coc-keeper-${ROOM}`;
   const saved = (() => { try { return JSON.parse(localStorage.getItem(KS) || '{}'); } catch { return {}; } })();
-  const ks = Object.assign({ scene: null, flags: {}, once: {}, entered: {}, items: {}, panel: 'party', showKeeperMd: false, npcRoll: {}, aiCfg: { mode: 'firebase', model: 'gemini-3.5-flash', fallback: 'gemini-3.5-flash-lite', siteKey: '', debug: false }, aiHistory: [], aiOpen: true, aiSettings: false }, saved);
+  const ks = Object.assign({ scene: null, flags: {}, once: {}, entered: {}, items: {}, panel: 'party', showKeeperMd: false, npcRoll: {}, aiCfg: { mode: 'firebase', model: 'gemini-3.5-flash', fallback: 'gemini-3.5-flash-lite', siteKey: '', debug: false }, aiHistory: [], aiOpen: true, aiSettings: false, memory: '', trail: [], journal: [], seenLogAt: 0, seenChatAt: 0, needOpen: false, chain: 0, ended: false, lastResults: [], pendingGoto: null, npcHp: {}, nudged: false, lastAiAt: 0, fails: 0 }, saved);
+  ks.gm = Object.assign({ mode: 'assist', paused: false, quietSec: 10, idleSec: 0, maxChain: 3 }, ks.gm || {});
   let aiRes = null; let aiBusy = false; let aiErr = ''; let aiStatus = ''; let aiInfo = '';
   if (ks.aiCfg.fallback == null) ks.aiCfg.fallback = 'gemini-3.5-flash-lite';
   let scn = null; let images = {}; let keeperMd = '';
@@ -948,8 +1154,8 @@ function keeper() {
       case 'clearFlag': delete ks.flags[e.flag]; break;
       case 'give': ks.items[e.item] = true; break;
       case 'reveal': revealHandout(e.handout); break;
-      case 'goto': goScene(e.scene); break;
-      case 'clock': if (e.action === 'start') startClock(e.clock); else net.set('clock', null); break;
+      case 'goto': if (autoOn()) ks.pendingGoto = e.scene; else goScene(e.scene); break;
+      case 'clock': if (e.action === 'start') startClock(e.clock, autoOn() ? clockMinutes((scn.clocks || []).find((x) => x.id === e.clock)) : undefined); else net.set('clock', null); break;
       case 'damage': {
         const targets = e.target === 'all' ? invList().map((x) => x.pid) : pid ? [pid] : [];
         for (const t of targets) { const amt = E.rollExpr(e.expr).total; damage(t, amt, `${e.expr}`); }
@@ -970,6 +1176,8 @@ function keeper() {
     const s = scn.scenes.find((x) => x.id === id);
     if (!s) return;
     ks.scene = id;
+    ks.trail = [...(ks.trail || []), s.title].slice(-12);
+    if (ks.gm && ks.gm.mode === 'auto') { ks.needOpen = true; ks.nudged = false; }
     if (!ks.entered[id]) {
       ks.entered[id] = true;
       for (const e of s.onEnter || []) if (['setFlag', 'clearFlag', 'give', 'clock'].includes(e.type)) applyEffect(e);
@@ -1016,8 +1224,8 @@ function keeper() {
   actions.loadOne = () => document.getElementById('scnFile').click();
   actions.filesPicked = (d, el) => loadFiles(el.files);
   actions.scene = (d) => goScene(d.id);
-  actions.sendRead = () => { const s = scene(); net.set('table', { title: s.title, act: s.act || '', read: s.read || '', at: now() }); toast('테이블에 보냈습니다.'); };
-  actions.sendText = (d) => { const s = scene(); const c = (s.clues || []).find((x) => x.id === d.id); net.set('table', { title: s.title, act: s.act || '', read: c.text, at: now() }); toast('테이블에 보냈습니다.'); };
+  actions.sendRead = () => { const s = scene(); net.set('table', { title: s.title, act: s.act || '', read: s.read || '', at: now() }); sendStory(s.read || ''); toast('테이블에 보냈습니다.'); };
+  actions.sendText = (d) => { const s = scene(); const c = (s.clues || []).find((x) => x.id === d.id); net.set('table', { title: s.title, act: s.act || '', read: c.text, at: now() }); sendStory(c.text); toast('테이블에 보냈습니다.'); };
   actions.req = (d) => { const s = scene(); const c = s.checks.find((x) => x.id === d.id); request(c, document.getElementById(`to-${d.id}`).value); };
   actions.san = (d) => { const s = scene(); const z = s.sanity.find((x) => x.id === d.id); requestSan(z, document.getElementById(`to-${d.id}`).value, d.alt === '1'); };
   actions.reveal = (d) => revealHandout(d.id);
@@ -1070,12 +1278,12 @@ function keeper() {
   actions.aiPaste = () => { const t = document.getElementById('aiPasteBox').value; if (!t.trim()) return; aiRes = parseAI(t); aiRes.done = {}; render(); };
   actions.aiSendNarr = () => {
     const t = document.getElementById('aiNarr').value.trim(); if (!t) return; const s = scene();
-    net.set('table', { title: s.title, act: s.act || '', read: t, at: now() });
+    net.set('table', { title: s.title, act: s.act || '', read: t, at: now() }); sendStory(t);
     ks.aiHistory = [...ks.aiHistory, t].slice(-6); save(); toast('테이블에 보냈습니다.');
   };
   actions.aiSendNpc = (d) => {
     const l = aiRes.npcLines[Number(d.i)]; const n = scn.npcs.find((x) => x.id === l.npc); const s = scene();
-    net.set('table', { title: s.title, act: s.act || '', read: `${n ? n.name.split(' (')[0] : l.npc}: "${l.line}"`, at: now() }); toast('대사를 테이블에 보냈습니다.');
+    net.set('table', { title: s.title, act: s.act || '', read: `${n ? n.name.split(' (')[0] : l.npc}: "${l.line}"`, at: now() }); sendStory(l.line, n ? n.name.split(' (')[0] : l.npc); toast('대사를 테이블에 보냈습니다.');
   };
   actions.aiSug = (d) => {
     const g = aiRes.suggestions[Number(d.i)]; const s = scene();
@@ -1093,6 +1301,233 @@ function keeper() {
     const text = sortByAt(room.log).map((l) => `${new Date(l.at).toLocaleTimeString()}  ${l.name || ''}  ${l.title}  ${l.roll ?? ''} ${l.levelKo || ''} ${l.detail || ''}`).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = `coc-log-${ROOM}.txt`; a.click();
   };
+
+  // ═══ 자율 진행 (AI 단독 수호자) ═══
+  const TAB = newKey();
+  const autoOn = () => ks.gm.mode === 'auto' && !ks.gm.paused && ks.aiCfg.mode !== 'manual';
+  const npcShort = (n) => String(n.name || n.id).split(' (')[0];
+  let autoWhy = ''; let lastBeat = 0;
+  function sendStory(text, npc) { if (text && String(text).trim()) net.push('story', { at: now(), text: String(text).trim(), ...(npc ? { npc } : {}) }); }
+  const isHost = () => { const h = room.meta && room.meta.autoHost; return !h || h.id === TAB || now() - (h.at || 0) > 30000; };
+  const openReqList = () => sortByAt(room.req).filter((r) => { const tos = r.to === 'all' ? invList().map((i) => i.pid) : [r.to]; return tos.some((p) => room.inv[p] && !(r.done && r.done[p])); });
+  function journal(e) { ks.journal = [...(ks.journal || []), { at: now(), ...e }].slice(-30); save(); }
+  function setWhy(w) { if (w === autoWhy) return; autoWhy = w; const el = document.getElementById('autoWhy'); if (el) el.textContent = w; }
+  const findCheck = (id) => { for (const sc of scn.scenes) { const c = (sc.checks || []).find((x) => x.id === id); if (c) return c; } return null; };
+  const META = /[a-z]+_[a-z0-9_]+|제안합니다|판정을 (?:요청|제안)|체크 항목|checkId|sanId/;
+  function cleanNarr(t) {
+    const parts = String(t || '').split(/(?<=[.!?…”"'])\s+/).filter(Boolean);
+    const kept = parts.filter((x) => !META.test(x));
+    return { text: kept.join(' '), cut: parts.length - kept.length };
+  }
+
+  function handleMelee(l, m) {
+    const inv = room.inv[l.pid];
+    const item = { 누가: l.name, pid: l.pid, 판정: `${m.npcName}의 ${m.attack}에 ${l.defense === 'fightBack' ? '반격' : '회피'}`, 결과: '' };
+    if (!l.success) {
+      const d = E.rollDamage({ damage: m.damage, impale: m.impale }, m.db || '0', { level: m.level });
+      damage(l.pid, d.total, `${m.npcName} ${m.attack}`);
+      item.결과 = `맞음 — 피해 ${d.total}${d.extreme ? ' (극단적 피해)' : ''}`;
+    } else if (l.defense === 'fightBack' && inv) {
+      const n = scn.npcs.find((x) => x.id === m.npc) || {};
+      const d = E.rollDamage({ damage: '1D3+DB' }, inv.db || '0').total;
+      const hp = (ks.npcHp[m.npc] ?? n.hp ?? 10) - d; ks.npcHp[m.npc] = hp;
+      net.push('log', { at: now(), name: npcShort(n), title: `반격 피해 ${d}`, event: true, detail: `${npcShort(n)} 체력 ${Math.max(0, hp)}${hp <= 0 ? ' · 쓰러짐' : ''}` });
+      item.결과 = `반격 성공 — ${npcShort(n)}에게 피해 ${d} (남은 체력 ${Math.max(0, hp)}${hp <= 0 ? ', 쓰러짐' : ''})`;
+    } else item.결과 = '피함';
+    ks.lastResults.push(item);
+  }
+  function processLogs() {
+    for (const l of sortByAt(room.log)) {
+      if ((l.at || 0) <= (ks.seenLogAt || 0)) continue;
+      ks.seenLogAt = l.at;
+      if (l.event || !l.pid) continue;
+      const rq = l.reqId && room.req[l.reqId];
+      if (rq && rq.melee) { handleMelee(l, rq.melee); continue; }
+      const item = { 누가: l.name, pid: l.pid, 판정: l.title, 판정id: l.checkId || null, 결과: l.levelKo || (l.success ? '성공' : '실패'), 성공: !!l.success, 비고: l.detail || '' };
+      if (l.checkId) {
+        const c = findCheck(l.checkId);
+        const o = c && pickOutcome(c.outcomes, l);
+        if (o) {
+          item.해석 = o[1].text;
+          (o[1].effects || []).forEach((e, ei) => { if (!(l.applied && l.applied[ei])) { applyEffect(e, l.pid); net.set(`log/${l.id}/applied/${ei}`, true); } });
+        }
+      }
+      ks.lastResults.push(item);
+    }
+  }
+  function npcAttack(a) {
+    const n = a.npcObj, atk = a.atk;
+    const r = E.check({ target: atk.value, kind: 'combat' });
+    net.push('log', { at: now(), name: npcShort(n), title: `${atk.name} 공격`, roll: r.roll, level: r.level, levelKo: r.levelKo, success: r.success, event: true, detail: `대상 ${room.inv[a.to]?.name || ''}` });
+    if (!r.success) { ks.lastResults.push({ 누가: npcShort(n), 판정: `${atk.name}로 ${room.inv[a.to]?.name}을(를) 공격`, 결과: '빗나감', auto: true }); return `${npcShort(n)} 공격 빗나감`; }
+    net.push('req', { at: now(), to: a.to, title: `${npcShort(n)}의 공격 — 회피하거나 반격하세요`, skill: '회피', kind: 'skill', difficulty: 'regular', note: `${atk.name} · ${r.levelKo}`,
+      melee: { npc: n.id, npcName: npcShort(n), attack: atk.name, roll: r.roll, level: r.level, levelKo: r.levelKo, damage: atk.damage, impale: !!atk.impale, db: n.db || '0' } });
+    return `${npcShort(n)} 공격 명중(${r.levelKo}) → 회피/반격 요청`;
+  }
+  function endingRewards() {
+    const end = (scn.endings || []).find((x) => x.id === ks.scene);
+    if (!end) return [];
+    const out = [];
+    for (const rw of end.rewards || []) {
+      if (rw.if && !condFlags(rw.if, ks.flags)) continue;
+      for (const i of invList()) {
+        if (i.dead) continue;
+        const g = E.rollExpr(rw.san).total; const san = Math.min(i.sanMax, i.san + g);
+        net.set(`inv/${i.pid}/san`, san);
+        net.push('log', { at: now(), pid: i.pid, name: i.name, title: `이성 회복 ${rw.san}`, event: true, detail: `${rw.reason} · +${g} (${i.san}→${san})` });
+        out.push(`${i.name} 이성 +${g}`);
+      }
+    }
+    return out;
+  }
+  const actLabel = (a) => ({ check: `판정 ${a.check ? a.check.skill : a.skill}${a.difficulty !== 'regular' ? `(${a.difficulty === 'hard' ? '어려움' : '극단적'})` : ''} → ${a.to === 'all' ? '전원' : room.inv[a.to]?.name || a.to}`, sanity: `이성 ${a.san ? a.san.loss : a.loss} → ${a.to === 'all' ? '전원' : room.inv[a.to]?.name || a.to}`, reveal: `핸드아웃 ${a.handout}`, flag: `진행 표시 ${flagName(a.flag)}`, scene: `장면 이동 → ${(scn.scenes.find((x) => x.id === a.to) || {}).title || a.to}`, npcAttack: `${a.npc} 공격` }[a.type] || a.type);
+
+  async function runAuto(task, newChats) {
+    aiBusy = true; aiErr = ''; render();
+    net.update('meta', { ai: 'thinking' });
+    const s = scene(); const t0 = Date.now();
+    const pids = invList().map((i) => i.pid);
+    const rolled = {};
+    for (const l of sortByAt(room.log)) if (l.checkId && l.pid) (rolled[l.checkId] = rolled[l.checkId] || []).push(l.pid);
+    const open = openReqList();
+    const results = ks.lastResults; ks.lastResults = [];
+    const extra = {
+      진행_방식: '자율 진행 — 너의 actions는 툴이 검사한 뒤 바로 실행된다. 사람 수호자는 없다.',
+      지금까지_줄거리: ks.memory || '(아직 없음)',
+      지나온_장면: ks.trail || [],
+      장면_출구: (s.exits || []).map((e) => ({ to: e.to, 설명: e.label, 갈수있음: condFlags(e.if, ks.flags) })),
+      판정_해석: results,
+      이미_굴린_판정: rolled,
+      대기중_요청: open.map((r) => ({ 판정: r.title, 대상: r.to })),
+      새_입력: newChats.map((c) => `${c.name}: ${c.text}`),
+      전투_가능_NPC: (scn.npcs || []).filter((n) => (n.attacks || []).length).map((n) => ({ id: n.id, 이름: npcShort(n), 공격: n.attacks.map((x) => x.name), 체력: ks.npcHp[n.id] ?? n.hp })),
+      비밀_표시: '현재_장면.keeper, 장면_NPC의 secret, keeper.md는 수호자만 안다.',
+    };
+    const user = buildContext({ scn, keeperMd, scene: s, flags: ks.flags, party: invList(), logs: sortByAt(room.log), chat: sortByAt(room.chat), history: ks.aiHistory, actions: '', task, revealed: Object.keys(room.handouts || {}), extra, taskText: AUTO_TASKS[task] });
+    let out;
+    try {
+      out = await askGemini(ks.aiCfg, FIREBASE_CONFIG, user, (st) => { aiStatus = st; const el = document.getElementById('aiStatus'); if (el) el.textContent = st; }, AUTO_SYSTEM);
+    } catch (e) {
+      ks.fails = (ks.fails || 0) + 1; ks.lastResults = [...results, ...ks.lastResults];
+      const kind = aiErrorKind(e);
+      ks.retryAt = now() + (kind === 'busy' ? 20000 : 8000);
+      journal({ task, error: `${kind === 'busy' ? '모델이 붐빔' : 'AI 호출 실패'}: ${String(e.message || e).slice(0, 160)}` });
+      if (ks.fails >= 3 || kind === 'appcheck' || kind === 'model') { ks.gm.paused = true; journal({ task: '멈춤', note: '연달아 실패해 자율 진행을 멈췄습니다. 설정을 확인한 뒤 다시 시작하세요.' }); }
+      aiBusy = false; aiStatus = ''; net.update('meta', { ai: 'waiting' }); save(); render(); return;
+    }
+    ks.fails = 0;
+    const res = parseAI(out.text);
+    if (res.bad) {
+      ks.retryAt = now() + 5000; ks.lastResults = [...results, ...ks.lastResults];
+      journal({ task, error: 'AI 답이 JSON 형식이 아니어서 버렸습니다. 다시 시도합니다.' });
+      aiBusy = false; aiStatus = ''; net.update('meta', { ai: 'waiting' }); save(); render(); return;
+    }
+    // 1) 묘사
+    const cn = cleanNarr(res.narration);
+    const lines = (res.npcLines || []).filter((l) => l && l.line && !META.test(l.line)).map((l) => { const n = scn.npcs.find((x) => x.id === l.npc); return { who: n ? npcShort(n) : String(l.npc || ''), line: String(l.line) }; });
+    if (cn.text) sendStory(cn.text);
+    for (const l of lines) sendStory(l.line, l.who);
+    const tableText = [cn.text, ...lines.map((l) => `${l.who}: "${l.line}"`)].filter(Boolean).join('\n\n');
+    if (tableText) net.set('table', { title: s.title, act: s.act || '', read: tableText, at: now() });
+    if (cn.text) ks.aiHistory = [...ks.aiHistory, cn.text].slice(-6);
+    if (res.memory) ks.memory = res.memory.slice(0, 1200);
+    // 2) 행동
+    const st = { rules: RULES, scn, scene: s, flags: ks.flags, once: ks.once, pids, revealed: new Set(Object.keys(room.handouts || {})), openReqs: open, rolled };
+    const vet = task === 'ending' ? { ok: [], rejected: (res.suggestions || []).map((a) => ({ a, why: '결말에서는 실행하지 않음' })) } : vetActions(res.suggestions, st);
+    const did = [];
+    for (const a of vet.ok) {
+      if (a.type === 'check') request(a.check || { id: null, skill: a.skill, who: '수호자', difficulty: a.difficulty }, a.to);
+      else if (a.type === 'sanity') requestSan(a.san || { loss: a.loss, trigger: '수호자' }, a.to);
+      else if (a.type === 'reveal') revealHandout(a.handout);
+      else if (a.type === 'flag') ks.flags[a.flag] = true;
+      else if (a.type === 'npcAttack') { did.push(npcAttack(a)); continue; }
+      else if (a.type === 'scene') enterScene(a.to);
+      did.push(actLabel(a));
+    }
+    if (task === 'ending') { ks.ended = true; did.push(...endingRewards()); }
+    // 3) 정리
+    if (task === 'open' || task === 'ending') { if (!vet.ok.some((a) => a.type === 'scene')) ks.needOpen = false; }
+    if (task === 'next') ks.nudged = true;
+    const selfOnly = results.length > 0 && results.every((r) => r.auto);
+    ks.chain = task === 'respond' || (task === 'result' && !selfOnly) ? 0 : (ks.chain || 0) + 1;
+    ks.lastAiAt = now();
+    aiInfo = `${out.model} · ${((Date.now() - t0) / 1000).toFixed(1)}초`;
+    journal({ task, narr: cn.text.slice(0, 140), cut: cn.cut, did, rejected: vet.rejected.map((r) => `${actLabel(r.a)} — ${r.why}`), note: res.keeperNote || '', model: aiInfo });
+    aiBusy = false; aiStatus = ''; net.update('meta', { ai: 'waiting', scene: scene().title });
+    save(); render();
+  }
+
+  async function autoTick(force) {
+    if (!scn || aiBusy || ks.gm.mode !== 'auto') return;
+    if (!isHost()) return setWhy('다른 수호자 탭이 자율 진행을 맡고 있습니다.');
+    if (now() - lastBeat > 10000) { lastBeat = now(); net.update('meta', { autoHost: { id: TAB, at: now() }, auto: !ks.gm.paused, autoQuiet: ks.gm.quietSec }); }
+    if (ks.aiCfg.mode === 'manual') return setWhy('복사·붙여넣기 방식에서는 자율 진행을 할 수 없습니다. 설정에서 Firebase AI Logic으로 바꾸세요.');
+    if (ks.gm.paused) return setWhy('일시정지 중입니다.');
+    if (!force && ks.retryAt && now() < ks.retryAt) return setWhy('잠시 뒤 다시 시도합니다…');
+    processLogs();
+    const open = openReqList();
+    if (!open.length && ks.pendingGoto) { const g = ks.pendingGoto; ks.pendingGoto = null; enterScene(g); render(); }
+    const allChat = sortByAt(room.chat);
+    const chats = allChat.filter((c) => (c.at || 0) > (ks.seenChatAt || 0) && c.pid);
+    const lastChatAt = chats.length ? chats[chats.length - 1].at : 0;
+    const lastLog = sortByAt(room.log).slice(-1)[0];
+    const lastAct = Math.max(ks.lastAiAt || 0, allChat.length ? allChat[allChat.length - 1].at : 0, lastLog ? lastLog.at : 0);
+    if (chats.length) ks.nudged = false;
+    const d = decide({ ended: ks.ended, chain: ks.chain || 0, maxChain: ks.gm.maxChain, openReqs: open.length, needInt: invList().some((i) => i.needInt), needOpen: ks.needOpen, isEnding: (scene() || {}).act === 'ending', newResults: ks.lastResults.length, newChat: chats.length, go: force || chats.some((c) => c.go), quietMs: now() - lastChatAt, quietSec: ks.gm.quietSec, idleMs: now() - lastAct, idleSec: ks.gm.idleSec, nudged: ks.nudged });
+    let task = d.task;
+    if (!task && force && !d.stop && !open.length) task = 'next';
+    if (d.stop && !force) { ks.gm.paused = true; ks.chain = 0; journal({ task: '멈춤', note: d.why }); net.update('meta', { auto: false }); save(); render(); return; }
+    if (!task) { save(); return setWhy(d.why); }
+    if (chats.length) ks.seenChatAt = lastChatAt;
+    setWhy({ open: '장면 도입을 쓰는 중…', respond: '탐사자 행동에 응답하는 중…', result: '판정 결과를 이야기하는 중…', next: '이야기를 이어 가는 중…', ending: '결말을 쓰는 중…' }[task]);
+    await runAuto(task, chats);
+  }
+  setInterval(() => { autoTick().catch((e) => { aiBusy = false; journal({ error: String(e.message || e) }); }); }, 1500);
+
+  actions.gmMode = (d, el) => {
+    ks.gm.mode = el.value;
+    if (ks.gm.mode === 'auto') {
+      const logs = sortByAt(room.log), chats = sortByAt(room.chat);
+      ks.seenLogAt = logs.length ? logs[logs.length - 1].at : 0; ks.seenChatAt = chats.length ? chats[chats.length - 1].at : 0;
+      ks.lastResults = []; ks.chain = 0; ks.fails = 0; ks.ended = (scene() || {}).act === 'ending' && ks.ended; ks.gm.paused = false; ks.lastAiAt = now();
+      ks.needOpen = !Object.keys(room.story || {}).length;
+      net.update('meta', { autoHost: { id: TAB, at: now() }, auto: true, autoQuiet: ks.gm.quietSec }); lastBeat = now();
+      journal({ task: '시작', note: '자율 진행을 켰습니다.' });
+    } else { net.update('meta', { auto: false, ai: null }); }
+    save(); render();
+  };
+  actions.gmPause = () => { ks.gm.paused = !ks.gm.paused; if (!ks.gm.paused) { ks.chain = 0; ks.fails = 0; ks.retryAt = 0; ks.ended = false; } net.update('meta', { auto: !ks.gm.paused }); journal({ task: ks.gm.paused ? '멈춤' : '다시 시작', note: ks.gm.paused ? '수호자가 일시정지했습니다.' : '' }); save(); render(); };
+  actions.gmNow = () => { if (ks.gm.paused) { ks.gm.paused = false; net.update('meta', { auto: true }); } ks.chain = 0; ks.retryAt = 0; autoTick(true); };
+  actions.gmSet = (d, el) => { const v = Math.max(0, parseInt(el.value, 10) || 0); ks.gm[d.k] = d.k === 'maxChain' ? Math.max(1, v) : v; save(); };
+  actions.gmMemory = (d, el) => { ks.memory = el.value; save(); };
+  actions.gmClearJournal = () => { ks.journal = []; save(); render(); };
+
+  function viewAuto() {
+    const j = (ks.journal || []).slice(-12).reverse();
+    const TASK_KO = { open: '장면 도입', respond: '행동 응답', result: '판정 결과', next: '재촉', ending: '결말' };
+    return `<div class="card stack" style="border-color:var(--bloodText)">
+      <div class="row" style="justify-content:space-between"><span class="label">Auto keeper · 자율 진행</span>
+        <span class="row"><span class="tag ${ks.gm.paused ? '' : 'red'}">${ks.gm.paused ? '일시정지' : aiBusy ? '생각하는 중' : '진행 중'}</span>
+        <button class="small ${ks.gm.paused ? 'primary' : ''}" data-act="gmPause">${ks.gm.paused ? '다시 시작' : '일시정지'}</button>
+        <button class="small" data-act="gmNow" ${aiBusy ? 'disabled' : ''}>지금 진행</button></span></div>
+      <div class="small gold" id="autoWhy">${esc(autoWhy || '')}</div>
+      ${aiBusy ? `<div class="small gold" id="aiStatus">${esc(aiStatus || '묻는 중…')}</div>` : ''}
+      <div class="row small">
+        <label>말이 멈추고 기다릴 시간(초)<input type="number" min="3" value="${ks.gm.quietSec}" data-change="gmSet" data-k="quietSec" style="width:80px"></label>
+        <label>조용하면 재촉(초, 0=끔)<input type="number" min="0" value="${ks.gm.idleSec}" data-change="gmSet" data-k="idleSec" style="width:80px"></label>
+        <label>입력 없이 연속 진행 한도<input type="number" min="1" value="${ks.gm.maxChain}" data-change="gmSet" data-k="maxChain" style="width:80px"></label>
+      </div>
+      <details><summary class="small">줄거리 기억 (AI가 갱신 · 고쳐도 됨)</summary><textarea rows="4" data-change="gmMemory">${esc(ks.memory || '')}</textarea></details>
+      <div class="small muted">이 탭이 게임을 진행합니다. 탭을 닫거나 컴퓨터가 잠들면 멈춥니다. 이 화면에는 비밀이 보이니, 같이 플레이한다면 탐사자 주소로 다른 창에서 들어가세요.</div>
+      <div class="row" style="justify-content:space-between"><span class="label">진행 기록</span><button class="small" data-act="gmClearJournal">지우기</button></div>
+      <div class="log" style="max-height:320px">${j.map((e) => `<div style="margin-bottom:6px"><span class="mono small muted">${new Date(e.at).toLocaleTimeString()}</span> <b>${esc(TASK_KO[e.task] || e.task || '')}</b>
+        ${e.error ? `<div class="small bad">${esc(e.error)}</div>` : ''}${e.note ? `<div class="small muted">${esc(e.note)}</div>` : ''}
+        ${e.narr ? `<div class="small">“${esc(e.narr)}${e.narr.length >= 140 ? '…' : ''}”${e.cut ? ` <span class="bad">(진행 설명 ${e.cut}문장 뺌)</span>` : ''}</div>` : ''}
+        ${(e.did || []).length ? `<div class="small ok">실행: ${esc(e.did.join(' · '))}</div>` : ''}
+        ${(e.rejected || []).length ? `<div class="small bad">막음: ${esc(e.rejected.join(' · '))}</div>` : ''}
+        ${e.model ? `<div class="small muted">${esc(e.model)}</div>` : ''}</div>`).join('') || '<div class="small muted">아직 기록이 없습니다.</div>'}</div>
+    </div>`;
+  }
 
   const toSelect = (id) => `<select id="to-${id}" aria-label="대상"><option value="all">전원</option>${invList().map((i) => `<option value="${i.pid}">${esc(i.name)}</option>`).join('')}</select>`;
 
@@ -1190,7 +1625,7 @@ function keeper() {
         ${s ? `
         <div><div class="label">Scene · ${esc(s.act || '')}</div><h1 class="title" style="margin:2px 0 0;font-size:36px;line-height:1.2">${esc(s.title)}</h1></div>
         <section class="card stack" aria-label="AI 키퍼">
-          <div class="row" style="justify-content:space-between"><span class="label">AI keeper · 보조 수호자 (Gemini)</span><span class="row"><span class="tag">${ks.aiCfg.mode === 'manual' ? '복사·붙여넣기' : esc(ks.aiCfg.model)}</span><button class="small" data-act="aiToggle" data-k="aiSettings">설정</button><button class="small" data-act="aiToggle" data-k="aiOpen">${ks.aiOpen ? '접기' : '펼치기'}</button></span></div>
+          <div class="row" style="justify-content:space-between"><span class="label">AI keeper · ${ks.gm.mode === 'auto' ? 'AI 단독 수호자' : '보조 수호자'} (Gemini)</span><span class="row"><select class="small" data-change="gmMode" aria-label="진행 방식"><option value="assist" ${ks.gm.mode !== 'auto' ? 'selected' : ''}>보조 — 사람이 진행</option><option value="auto" ${ks.gm.mode === 'auto' ? 'selected' : ''}>자율 — AI가 진행</option></select><span class="tag">${ks.aiCfg.mode === 'manual' ? '복사·붙여넣기' : esc(ks.aiCfg.model)}</span><button class="small" data-act="aiToggle" data-k="aiSettings">설정</button><button class="small" data-act="aiToggle" data-k="aiOpen">${ks.aiOpen ? '접기' : '펼치기'}</button></span></div>
           ${ks.aiSettings ? `<div class="row">
             <label>방식<select data-change="aiCfg" data-k="mode"><option value="firebase" ${ks.aiCfg.mode === 'firebase' ? 'selected' : ''}>Firebase AI Logic (자동)</option><option value="manual" ${ks.aiCfg.mode === 'manual' ? 'selected' : ''}>복사·붙여넣기 (Gemini 웹)</option></select></label>
             <label>모델<input value="${esc(ks.aiCfg.model)}" data-change="aiCfg" data-k="model" style="width:180px"></label>
@@ -1198,7 +1633,8 @@ function keeper() {
             <label>reCAPTCHA 사이트 키<input value="${esc(ks.aiCfg.siteKey)}" data-change="aiCfg" data-k="siteKey" style="width:260px" placeholder="App Check용"></label>
             <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text2)"><input type="checkbox" data-change="aiCfg" data-k="debug" ${ks.aiCfg.debug ? 'checked' : ''}> App Check 디버그 모드 (내 컴퓨터 시험용)</label>
           </div>` : ''}
-          ${ks.aiOpen ? `
+          ${ks.gm.mode === 'auto' && ks.aiOpen ? viewAuto() : ''}
+          ${ks.aiOpen && ks.gm.mode !== 'auto' ? `
           <label>지금 상황 덧붙이기 (비워 두면 탐사자들의 최근 말과 굴림만 보냄)<textarea id="aiActions" rows="2" placeholder="예: 도윤이 장롱 문을 열어 보겠다고 함"></textarea></label>
           <div class="row">
             <button class="primary" data-act="aiAsk" data-task="respond" ${aiBusy ? 'disabled' : ''}>${aiBusy ? '생각하는 중…' : '행동에 응답'}</button>
@@ -1294,6 +1730,7 @@ function player() {
     const inv = me();
     let skill = r.skill;
     if (skill === '대인관계') skill = ui.social[r.id] || SOCIAL.reduce((a, b) => ((targetFor(inv, b) || 0) > (targetFor(inv, a) || 0) ? b : a));
+    if (r.melee && opts.defense === 'fightBack') skill = Object.keys(inv.skills || {}).filter((k) => k.startsWith('근접전')).sort((a, b) => inv.skills[b] - inv.skills[a])[0] || '근접전 (격투)';
     let target = targetFor(inv, skill);
     if (target == null) {
       const v = parseInt(prompt(`${skill} 값이 시트에 없습니다. 값을 넣어 주세요.`, '0'), 10);
@@ -1303,6 +1740,13 @@ function player() {
     const res = E.check({ target, difficulty: r.difficulty || 'regular', bonus: r.bonus || 0, penalty: r.penalty || 0, kind, pushed: !!opts.pushed });
     const entry = { at: now(), pid, name: inv.name, reqId: r.id, checkId: r.checkId || null, title: `${skill}${r.difficulty === 'hard' ? ' (어려움)' : r.difficulty === 'extreme' ? ' (극단적)' : ''}${opts.pushed ? ' · 강행' : ''}`, skill, kind, target, required: res.required, roll: res.roll, tens: res.dice.tens || [], units: res.dice.units ?? null, level: res.level, levelKo: res.levelKo, success: res.success, pushed: !!opts.pushed, difficulty: res.difficulty, bonus: r.bonus || 0, penalty: r.penalty || 0, canPush: res.canPush && !r.opposed };
 
+    if (r.melee) {
+      const defense = opts.defense || 'dodge';
+      const m = E.resolveMelee({ success: true, level: r.melee.level }, res, defense);
+      entry.defense = defense; entry.success = !m.hit; entry.canPush = false;
+      entry.title = `${defense === 'fightBack' ? '반격' : '회피'} (${skill}) — ${r.melee.npcName}의 ${r.melee.attack}`;
+      entry.detail = `상대 ${r.melee.roll} ${r.melee.levelKo} → ${m.hit ? '맞음' : defense === 'fightBack' ? '반격 성공' : '피함'}`;
+    }
     if (r.opposed) {
       const o = E.check({ target: r.opposed.value, kind });
       const cmp = E.opposed({ ...res, success: res.success }, o);
@@ -1344,7 +1788,8 @@ function player() {
 
   actions.tab = (d) => { ui.tab = d.t; render(); };
   actions.say = async () => { const el = document.getElementById('chatText'); const t = el.value.trim(); if (!t) return; el.value = ''; await net.push('chat', { at: now(), pid, name: me().name, text: t.slice(0, 600) }); };
-  actions.roll = (d) => { const r = { id: d.id, ...room.req[d.id] }; doRoll(r); };
+  actions.roll = (d) => { const r = { id: d.id, ...room.req[d.id] }; doRoll(r, d.def ? { defense: d.def } : {}); };
+  actions.sayGo = async () => { const el = document.getElementById('chatText'); const t = el.value.trim(); el.value = ''; await net.push('chat', { at: now(), pid, name: me().name, text: (t || '(차례를 넘깁니다)').slice(0, 600), go: true }); };
   actions.social = (d, el) => { ui.social[d.id] = el.value; };
   actions.push = (d) => { const l = room.log[d.lid]; const r = room.req[l.reqId] ? { id: l.reqId, ...room.req[l.reqId] } : { skill: l.skill, kind: l.kind, difficulty: 'regular', bonus: l.bonus, penalty: l.penalty, checkId: l.checkId }; doRoll(r, { pushed: true, free: !room.req[l.reqId] }); };
   actions.luck = async (d) => {
@@ -1396,7 +1841,7 @@ function player() {
   }
   function viewResult(l, lid) {
     const inv = me();
-    const luckOpts = !l.pushed && !l.luckSpent && !l.success && ['skill', 'characteristic'].includes(l.kind) && !l.opp ? E.luckSpendOptions({ ...l, kind: l.kind }, inv.luck) : [];
+    const luckOpts = !l.pushed && !l.luckSpent && !l.success && ['skill', 'characteristic'].includes(l.kind) && !l.opp && !l.defense ? E.luckSpendOptions({ ...l, kind: l.kind }, inv.luck) : [];
     return `<section class="card" aria-label="결과">
       <div class="row" style="gap:14px">${diceView(l)}
         <div><div style="font-size:17px">${l.roll ?? ''} · <span class="${l.success ? 'ok' : 'bad'}">${esc(l.levelKo || '')}${l.opp ? (l.success ? ' · 대항 승리' : ' · 대항 패배') : ''}</span></div>
@@ -1453,7 +1898,8 @@ function player() {
       </header>
       <div class="p-body">
       <div class="pane pane-roll"><div class="label pane-title">Checks · 판정</div>
-        ${room.table && room.table.read ? `<section class="paper" aria-label="지금 장면"><div class="mono small muted">SCENE · ${esc(room.table.title || '')}</div><p style="font-size:17px">${esc(room.table.read)}</p></section>` : ''}
+        ${(() => { const st = sortByAt(room.story).slice(-5); if (st.length) return `<section class="paper" aria-label="이야기"><div class="mono small muted">STORY · ${esc(room.meta?.scene || '')}</div>${st.map((x, i) => `<p style="font-size:${i === st.length - 1 ? 17 : 15}px;${i === st.length - 1 ? '' : 'opacity:.72;'}margin:8px 0">${x.npc ? `<b>${esc(x.npc)}</b>: “${esc(x.text)}”` : esc(x.text)}</p>`).join('')}</section>`; return room.table && room.table.read ? `<section class="paper" aria-label="지금 장면"><div class="mono small muted">SCENE · ${esc(room.table.title || '')}</div><p style="font-size:17px">${esc(room.table.read)}</p></section>` : ''; })()}
+        ${room.meta?.auto && room.meta?.ai === 'thinking' ? '<div class="small gold" aria-live="polite">수호자가 이야기를 이어 가는 중…</div>' : ''}
         ${inv.needInt ? `<section class="card blood"><div class="label" style="color:var(--bloodText)">이성을 5 이상 잃었습니다</div><p class="small" style="margin:4px 0 10px">지능 판정에 성공하면 본 것을 온전히 이해해 일시적 광기에 빠집니다. 실패하면 기억을 억눌러 광기를 면합니다.</p><button class="primary" data-act="intRoll">지능 판정</button></section>` : ''}
         ${mine.map((r) => `<section class="card blood" aria-label="판정 요청">
           <div class="label" style="color:var(--bloodText)">Keeper requests · 판정 요청</div>
@@ -1462,14 +1908,14 @@ function player() {
           ${r.skill === '대인관계' ? `<label style="margin-top:6px">어떤 기능으로?<select data-change="social" data-id="${r.id}">${SOCIAL.map((s) => `<option ${ui.social[r.id] === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>` : ''}
           <div class="row" style="justify-content:space-between;margin-top:10px">
             <span class="mono small">${esc(r.skill === '대인관계' ? '' : r.skill)} ${r.skill === '대인관계' ? '' : targetFor(inv, r.skill) ?? '?'}${r.difficulty === 'hard' ? ' · 어려움' : r.difficulty === 'extreme' ? ' · 극단적' : ''}${r.bonus ? ` · 보너스 ${r.bonus}` : ''}${r.penalty ? ` · 페널티 ${r.penalty}` : ''}${r.opposed ? ` · vs ${r.opposed.value}` : ''}</span>
-            <button class="primary" data-act="roll" data-id="${r.id}" style="min-height:48px;font-size:16px">주사위 굴리기</button>
+            ${r.melee ? `<span class="row"><button class="primary" data-act="roll" data-id="${r.id}" data-def="dodge" style="min-height:48px;font-size:16px">회피 ${targetFor(inv, '회피') ?? '?'}</button><button data-act="roll" data-id="${r.id}" data-def="fightBack" style="min-height:48px;font-size:16px">반격</button></span>` : `<button class="primary" data-act="roll" data-id="${r.id}" style="min-height:48px;font-size:16px">주사위 굴리기</button>`}
           </div></section>`).join('')}
         ${lastId ? viewResult(room.log[lastId], lastId) : ''}
         ${inv.backstory ? `<section class="paper"><div class="mono small muted">BACKSTORY · ${esc(inv.label || '')}</div><p style="font-size:15px">${esc(inv.backstory)}</p></section>` : ''}
         <section class="card"><div class="label">Condition · 지금 상태</div><div>${esc(inv.state || '정상')}${inv.majorWound ? ' · 중상' : ''}</div><div class="small muted">오늘 잃은 이성 ${inv.lostToday || 0}</div></section>
         <section class="card stack"><div class="label">Say & do · 행동·말하기</div>
           <textarea id="chatText" rows="2" placeholder="예: 장롱 문을 천천히 열어 봅니다. / &quot;누구세요?&quot;"></textarea>
-          <div class="row"><button class="primary" data-act="say">보내기</button><span class="small muted">수호자에게 보입니다</span></div>
+          <div class="row"><button class="primary" data-act="say">보내기</button>${room.meta?.auto ? `<button data-act="sayGo">보내고 수호자에게 넘기기</button><span class="small muted">AI 수호자가 진행 중 · 가만히 두면 ${room.meta.autoQuiet || 10}초 뒤 응답합니다</span>` : '<span class="small muted">수호자에게 보입니다</span>'}</div>
           <div class="log" style="max-height:200px">${sortByAt(room.chat).slice(-8).map((c) => `<div><b class="${c.pid === pid ? 'gold' : ''}">${esc(c.name)}</b> ${esc(c.text)}</div>`).join('')}</div>
         </section>
         <section class="card stack"><div class="label">Self roll · 스스로 굴리기</div><div class="row"><select id="selfSkill" aria-label="기능">${['운', ...RULES.characteristics.map((c) => c.ko), ...Object.keys(inv.skills)].map((k) => `<option>${esc(k)}</option>`).join('')}</select><select id="selfDiff" aria-label="난이도"><option value="regular">보통</option><option value="hard">어려움</option><option value="extreme">극단적</option></select><button data-act="selfRoll">굴리기</button></div></section>
