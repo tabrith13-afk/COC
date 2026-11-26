@@ -3,14 +3,1477 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>크툴루의 부름 테이블 (개발용)</title>
+<title>크툴루의 부름 테이블</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Song+Myung&family=Hahmlet:wght@400;600&family=IM+Fell+English:ital@0;1&family=Special+Elite&display=swap">
-<link rel="stylesheet" href="src/style.css">
+<style>
+:root{
+  --ink:#12100e; --ink2:#171411; --panel:#1c1915; --panel2:#1a1714; --line:#2f2922; --line2:#3a332a; --line3:#5a4e3e;
+  --text:#ece3cf; --text2:#d9cfba; --muted:#a89a82; --muted2:#968872;
+  --paper:#e9dfc6; --paper2:#ddd2b6; --paperInk:#2b2118; --paperMuted:#5c4c3a;
+  --blood:#8f2a22; --bloodBg:#2a1715; --bloodLine:#6b2520; --bloodText:#e8a79e;
+  --gold:#c2a165; --san:#b9d3c0; --sanLine:#4a5e50;
+  --serif:'Gowun Batang','Noto Serif KR','Nanum Myeongjo',serif;
+  --title:'Song Myung','Gowun Batang',serif;
+  --hand:'Hahmlet','Gowun Batang',serif;
+  --type:'Special Elite','Courier New',monospace;
+  --fell:'IM Fell English','Gowun Batang',serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--serif);font-size:15px;line-height:1.6}
+a{color:var(--gold)} a:hover{color:#e0c48a}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;min-height:40px;padding:8px 14px;background:transparent;border:1px solid var(--line3);border-radius:2px;color:var(--text)}
+button:hover{border-color:var(--gold)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--blood);border-color:var(--blood);color:#f6ecd9}
+button.primary:hover{background:#a3332a}
+button.small{min-height:32px;padding:4px 10px;font-size:13px}
+input,select,textarea{background:#0f0d0b;border:1px solid var(--line2);border-radius:2px;padding:8px 10px;color:var(--text)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.label{font-family:var(--type);font-size:12px;letter-spacing:.06em;color:var(--gold);text-transform:uppercase}
+.muted{color:var(--muted)} .small{font-size:13px}
+.title{font-family:var(--title);font-weight:400}
+.mono{font-family:var(--type)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stack{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:14px 16px}
+.paper{background:var(--paper);color:var(--paperInk);border-radius:2px;padding:18px 22px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.paper .muted{color:var(--paperMuted)}
+.paper p{font-family:var(--hand);font-size:18px;line-height:1.75;margin:0;white-space:pre-line}
+.keeper{border:1px solid var(--line2);background:var(--panel2);padding:14px 18px;border-radius:2px}
+.keeper ul{margin:6px 0 0;padding-left:18px;color:var(--text2)} .keeper li{margin:4px 0}
+.blood{background:var(--bloodBg);border:1px solid var(--bloodLine)}
+.tag{display:inline-block;padding:2px 10px;border:1px solid var(--line2);border-radius:2px;font-size:12px;color:var(--muted)}
+.tag.red{border-color:var(--bloodLine);color:var(--bloodText)}
+.ok{color:var(--san)} .bad{color:var(--bloodText)} .gold{color:var(--gold)}
+.hidden{display:none!important}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--paper);color:var(--paperInk);padding:10px 18px;border-radius:2px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:50}
+
+/* 로비 */
+.lobby{max-width:880px;margin:0 auto;padding:48px 24px;display:flex;flex-direction:column;gap:28px}
+.lobby h1{font-family:var(--title);font-weight:400;font-size:46px;margin:0;line-height:1.2}
+.lobby .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+
+/* 수호자 */
+.k-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding:14px 24px;border-bottom:1px solid var(--line2);background:var(--ink2)}
+.k-body{display:flex;flex-wrap:wrap;align-items:stretch}
+.k-nav{flex:1 1 220px;max-width:260px;padding:20px 16px;border-right:1px solid #2a251f;background:#15120f}
+.k-nav button{display:block;width:100%;text-align:left;border:0;padding:6px 10px;min-height:34px;color:var(--muted);font-size:14px}
+.k-nav button.on{background:var(--bloodBg);color:#f3d6cf;box-shadow:inset 0 0 0 1px var(--bloodLine)}
+.k-nav .act{margin:16px 0 6px}
+.k-main{flex:999 1 560px;min-width:0;padding:24px 28px;display:flex;flex-direction:column;gap:18px}
+.k-side{flex:1 1 300px;max-width:400px;padding:20px;border-left:1px solid #2a251f;background:#15120f;display:flex;flex-direction:column;gap:14px}
+.check{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.check .what{flex:1 1 260px;min-width:0}
+.outcome{margin-top:6px;padding:8px 12px;border-left:0;background:#221d18;border-radius:2px;font-size:14px;color:var(--text2);width:100%}
+.inv{padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.stats4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-family:var(--type);font-size:13px;color:var(--muted)}
+.stats4 b{font-weight:400;color:var(--text)}
+.adj{display:flex;align-items:center;gap:2px}
+.adj button{min-height:26px;padding:0 6px;font-size:12px}
+.log{display:flex;flex-direction:column;gap:4px;font-size:14px;max-height:280px;overflow:auto}
+.log .n{font-family:var(--type);min-width:34px;text-align:right;display:inline-block}
+.flags{display:grid;grid-template-columns:1fr;gap:2px;max-height:260px;overflow:auto;font-size:13px}
+.flags label{flex-direction:row;align-items:center;gap:6px;color:var(--text2)}
+
+/* 탐사자 */
+.p-wrap{max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.p-head{padding:16px 18px 12px;border-bottom:1px solid var(--line2);background:var(--ink2)}
+.p-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px;text-align:center}
+.p-stats div{padding:6px 0;border:1px solid var(--line2);border-radius:2px}
+.p-stats .v{font-family:var(--type);font-size:18px}
+.p-body{flex:1 1 auto;padding:14px 18px 90px;display:flex;flex-direction:column;gap:14px}
+.p-tabs{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line2);background:var(--ink2);max-width:520px;margin:0 auto}
+.p-tabs button{border:0;min-height:56px;color:var(--muted)}
+.p-tabs button.on{color:var(--text);box-shadow:inset 0 2px 0 var(--blood)}
+.dice{display:flex;gap:6px}
+.dice span{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--paperInk);font-family:var(--type);font-size:20px;border-radius:3px}
+.dice span.drop{opacity:.35}
+.skills{display:grid;grid-template-columns:1fr 70px;gap:4px 10px;align-items:center;font-size:14px}
+.skills input{padding:4px 6px;text-align:right}
+.chgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+
+/* 테이블 */
+.t-wrap{min-height:100vh;background:radial-gradient(ellipse at 50% 40%,#1f1b16 0%,#12100e 60%,#0a0908 100%);padding:36px 52px;display:flex;flex-direction:column;gap:24px}
+.t-mid{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:40px;align-items:center}
+.t-read{flex:1 1 560px;font-family:var(--hand);font-size:clamp(22px,2.6vw,36px);line-height:1.6;white-space:pre-line}
+.t-side{flex:0 1 380px;display:flex;flex-direction:column;gap:18px}
+.t-roll{font-family:var(--type);font-size:88px;line-height:1}
+.t-party{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.t-party>div{padding:12px 16px;border-top:2px solid var(--line3);background:rgba(28,25,21,.8)}
+.handout-img{max-width:100%;max-height:52vh;display:block;margin-top:8px;border-radius:2px}
+@media (max-width:700px){.k-nav,.k-side{max-width:none}.t-wrap{padding:20px}}
+
+.k-side .stats4{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+
+/* 탐사자 화면: 휴대폰은 탭, 컴퓨터는 세 칸 */
+.pane{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pane-title{display:none}
+@media (max-width:999px){
+  .p-wrap .pane{display:none}
+  .p-wrap[data-tab=roll] .pane-roll,.p-wrap[data-tab=notes] .pane-notes,.p-wrap[data-tab=sheet] .pane-sheet,.p-wrap[data-tab=log] .pane-log{display:flex}
+}
+@media (min-width:1000px){
+  .p-wrap,.p-wrap.create{max-width:1560px}
+  .p-head{padding:18px 32px 14px}
+  .p-head .p-stats{max-width:640px}
+  .p-body{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr) minmax(300px,420px);grid-template-areas:"sheet roll notes" "sheet log notes";align-items:start;gap:20px 28px;padding:24px 32px}
+  .create .p-body{display:flex;flex-direction:column;align-items:stretch;max-width:1100px;margin:0 auto;width:100%}
+  .pane-sheet{grid-area:sheet}.pane-roll{grid-area:roll}.pane-notes{grid-area:notes}.pane-log{grid-area:log}
+  .pane-title{display:block}
+  .p-tabs{display:none}
+  .skills.wide{grid-template-columns:repeat(auto-fill,minmax(170px,1fr) 70px)}
+  .pane-log .log{max-height:340px}
+}
+
+</style>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="app"></div>
-<script type="module" src="src/app.js"></script>
+<script type="module">
+window.__RULES = {"id":"coc7-kr","version":"1.0.0","note":"크툴루의 부름 7판 한국어판 수호자 룰북(v1.00)의 규칙을 수치와 짧은 이름으로 옮긴 데이터. 룰북 본문은 담지 않는다. page는 룰북 쪽수.","characteristics":[{"key":"STR","ko":"근력","roll":"3D6","mult":5,"page":30},{"key":"CON","ko":"건강","roll":"3D6","mult":5,"page":30},{"key":"SIZ","ko":"크기","roll":"2D6+6","mult":5,"page":31},{"key":"DEX","ko":"민첩성","roll":"3D6","mult":5,"page":31},{"key":"APP","ko":"외모","roll":"3D6","mult":5,"page":31},{"key":"INT","ko":"지능","roll":"2D6+6","mult":5,"page":31},{"key":"POW","ko":"정신력","roll":"3D6","mult":5,"page":31},{"key":"EDU","ko":"교육","roll":"2D6+6","mult":5,"page":31}],"luck":{"ko":"운","roll":"3D6","mult":5,"max":99,"page":32},"ageModifiers":{"page":32,"note":"해당 나이 구간 하나만 적용(누적 아님). reduce는 플레이어가 나눠 뺄 총점.","bands":[{"min":15,"max":19,"reduceFrom":["STR","SIZ"],"reduce":5,"EDU":-5,"luckRollTwiceTakeHigher":true,"eduImprove":0,"APP":0},{"min":20,"max":39,"reduceFrom":[],"reduce":0,"eduImprove":1,"APP":0},{"min":40,"max":49,"reduceFrom":["STR","CON","DEX"],"reduce":5,"eduImprove":2,"APP":-5},{"min":50,"max":59,"reduceFrom":["STR","CON","DEX"],"reduce":10,"eduImprove":3,"APP":-10},{"min":60,"max":69,"reduceFrom":["STR","CON","DEX"],"reduce":20,"eduImprove":4,"APP":-15},{"min":70,"max":79,"reduceFrom":["STR","CON","DEX"],"reduce":40,"eduImprove":4,"APP":-20},{"min":80,"max":89,"reduceFrom":["STR","CON","DEX"],"reduce":80,"eduImprove":4,"APP":-25}],"eduImproveRule":"1D100이 현재 교육보다 크면 교육 +1D10 (최대 99)"},"derived":{"hp":{"ko":"체력","formula":"floor((CON+SIZ)/10)","page":33},"mp":{"ko":"마력","formula":"floor(POW/5)","page":31},"san":{"ko":"이성","formula":"POW","page":31},"sanMax":{"ko":"최대 이성","formula":"99 - 크툴루 신화","page":153},"half":{"ko":"절반값","formula":"floor(x/2)","page":32},"fifth":{"ko":"5분의 1값","formula":"floor(x/5)","page":32}},"damageBonus":{"page":33,"basis":"STR+SIZ","table":[{"min":2,"max":64,"db":"-2","build":-2},{"min":65,"max":84,"db":"-1","build":-1},{"min":85,"max":124,"db":"0","build":0},{"min":125,"max":164,"db":"1D4","build":1},{"min":165,"max":204,"db":"1D6","build":2},{"min":205,"max":284,"db":"2D6","build":3},{"min":285,"max":364,"db":"3D6","build":4},{"min":365,"max":444,"db":"4D6","build":5},{"min":445,"max":524,"db":"5D6","build":6}],"beyond":"525부터 80점 구간마다 피해 보너스 +1D6, 체구 +1","firearmsNoDB":true},"move":{"page":33,"rules":[{"if":"STR<SIZ && DEX<SIZ","mov":7},{"if":"STR>SIZ && DEX>SIZ","mov":9},{"if":"otherwise","mov":8}],"agePenalty":[{"min":40,"max":49,"mod":-1},{"min":50,"max":59,"mod":-2},{"min":60,"max":69,"mod":-3},{"min":70,"max":79,"mod":-4},{"min":80,"max":89,"mod":-5}],"metersPerRound":"MOV x 5"},"skills":{"page":56,"legend":{"modern":"현대 배경 전용","rare":"표준 시트에 없는 희귀 기능","spec":"전문 분야로 나뉨"},"list":[{"ko":"감정","base":5},{"ko":"고고학","base":1},{"ko":"과학","base":1,"spec":true,"children":[{"ko":"공학","base":1},{"ko":"기상학","base":1},{"ko":"동물학","base":1},{"ko":"물리학","base":1},{"ko":"생물학","base":1},{"ko":"수사과학","base":1},{"ko":"수학","base":10},{"ko":"식물학","base":1},{"ko":"암호학","base":1},{"ko":"약학","base":1},{"ko":"지질학","base":1},{"ko":"천문학","base":1},{"ko":"화학","base":1}]},{"ko":"관찰력","base":25},{"ko":"근접전","spec":true,"combat":"melee","children":[{"ko":"격투","base":25},{"ko":"가롯테","base":15},{"ko":"도검","base":20},{"ko":"도끼","base":15},{"ko":"도리깨","base":10},{"ko":"동력톱","base":10},{"ko":"창","base":20},{"ko":"채찍","base":5}]},{"ko":"기계 수리","base":10},{"ko":"도약","base":20},{"ko":"독순술","base":1,"rare":true},{"ko":"동물 다루기","base":5,"rare":true},{"ko":"듣기","base":20},{"ko":"말재주","base":5,"social":true},{"ko":"매혹","base":15,"social":true},{"ko":"법률","base":5},{"ko":"변장","base":5},{"ko":"비밀 지식","base":1,"rare":true,"spec":true},{"ko":"사격","spec":true,"combat":"firearm","children":[{"ko":"권총","base":20},{"ko":"라이플/산탄총","base":25},{"ko":"기관단총","base":15},{"ko":"기관총","base":10},{"ko":"중화기","base":10},{"ko":"화염방사기","base":10},{"ko":"활","base":15}]},{"ko":"생존술","base":10,"spec":true},{"ko":"설득","base":10,"social":true},{"ko":"손놀림","base":10},{"ko":"수영","base":20},{"ko":"승마","base":5},{"ko":"심리학","base":10},{"ko":"언어 (모국어)","base":"EDU"},{"ko":"언어 (외국어)","base":1,"spec":true},{"ko":"역사","base":5},{"ko":"열쇠공","base":1},{"ko":"예술/공예","base":5,"spec":true,"children":[{"ko":"미술","base":5},{"ko":"사진","base":5},{"ko":"연기","base":5},{"ko":"위조","base":5}]},{"ko":"오르기","base":20},{"ko":"오컬트","base":5},{"ko":"위협","base":15,"social":true},{"ko":"은밀행동","base":20},{"ko":"응급처치","base":30},{"ko":"의료","base":1},{"ko":"인류학","base":1},{"ko":"자동차 운전","base":20},{"ko":"자료 조사","base":20},{"ko":"자연","base":10},{"ko":"잠수","base":1,"rare":true},{"ko":"재력","base":0},{"ko":"전기 수리","base":10},{"ko":"전자기기","base":1,"modern":true},{"ko":"정신분석","base":1},{"ko":"중장비 조작","base":1},{"ko":"조종","base":1,"spec":true},{"ko":"최면술","base":1,"rare":true},{"ko":"추적","base":10},{"ko":"컴퓨터 사용","base":5,"modern":true},{"ko":"크툴루 신화","base":0,"noImprove":true},{"ko":"투척","base":20,"combat":"thrown"},{"ko":"포격","base":1,"rare":true},{"ko":"폭파","base":1,"rare":true},{"ko":"항법","base":10},{"ko":"회계","base":5},{"ko":"회피","base":"DEX/2","combat":"dodge"}]},"checks":{"page":[88,89],"levels":["fumble","fail","regular","hard","extreme","critical"],"levelKo":{"fumble":"대실패","fail":"실패","regular":"보통 성공","hard":"어려운 성공","extreme":"극단적 성공","critical":"대성공"},"critical":1,"fumble":{"ifTargetBelow50":[96,100],"ifTarget50OrMore":[100,100]},"difficulty":{"regular":"기준치 그대로","hard":"절반값","extreme":"5분의 1값"},"opposingDifficulty":{"page":86,"rule":"대항 수치 50 이상이면 어려움, 90 이상이면 극단적"},"humanLimit":{"page":86,"rule":"극단적 성공으로 넘을 수 있는 한계는 기준치 + 100"},"bonusPenalty":{"page":89,"max":2,"cancel":"보너스 1개와 페널티 1개는 상쇄","overflow":"페널티가 2개를 넘으면 대신 난이도를 한 단계 올린다 (p.112 예시)"},"opposed":{"page":88,"tie":"성공 수준이 같으면 기준치가 높은 쪽 승리, 그래도 같으면 교착 또는 다시 굴림"},"push":{"page":83,"allowed":["skill","characteristic"],"notAllowed":["combat","damage","sanity","sanityLoss","luck"],"fumbleCannotBePushed":true,"onFail":"수호자가 정하는 심각한 대가"},"groupLuck":{"page":88,"rule":"집단 운 판정은 그 장면에서 운이 가장 낮은 탐사자가 굴린다"}},"luckSpend":{"optional":true,"page":97,"rule":"운 1점마다 굴림값 -1","notFor":["luck","damage","sanity","sanityLoss"],"notAfterPush":true,"cannotChange":["critical","fumble","malfunction"],"noImproveMark":true,"recovery":"세션이 끝날 때 1D100 > 현재 운 이면 운 +1D10 (최대 99)","stayConscious":{"page":123,"rule":"의식을 잃을 때 운 1점으로 그 라운드 끝까지 버팀, 이후 라운드마다 2, 4, 8…점"}},"improvement":{"page":92,"rule":"향상 표시된 기능마다 1D100 > 현재 기능 이거나 96 이상이면 +1D10","over90Sanity":"이번 성장 단계에서 90 이상이 된 기능마다 이성 +2D6","noMarkFor":["bonus dice 사용 판정","운으로 바꾼 성공","대항 판정에서 진 쪽"]},"sanity":{"page":[152,161],"notation":"성공 손실/실패 손실 (예: 0/1D4)","fumble":"대실패면 실패 손실의 최대값","noLuck":true,"noPush":true,"temporary":{"trigger":"한 번의 이성 판정으로 5 이상 잃음","then":"지능 판정: 성공하면 일시적 광기(1D10시간), 실패하면 기억을 억누르고 광기를 면함"},"indefinite":{"trigger":"플레이 속 하루 동안 그날 시작 시 이성의 5분의 1 이상 잃음","then":"장기적 광기"},"permanent":{"trigger":"이성 0","then":"영구적 광기, 더 이상 플레이어 캐릭터가 아님"},"boutDuration":{"realtime":"1D10 라운드","summary":"1D10 시간"},"boutRealtime":["기억상실","심신성 장애","폭력","편집증","중요한 사람 착각","기절","필사적인 도주","발작적 행동·감정 폭발","공포증","집착증"],"boutSummary":["기억상실","도난","부상","폭력","사상/신념 표출","중요한 사람에게 감","시설 감금","공황 도주","공포증","집착증"],"phobiaManiaTables":"표 9·10은 1D100 표. 툴에는 넣지 않고 수호자가 룰북에서 고른다."},"wounds":{"page":[117,119],"majorWound":"공격 한 번의 피해가 최대 체력의 절반 이상","instantDeath":"공격 한 번의 피해가 최대 체력 초과","onMajorWound":["중상 표시","즉시 쓰러짐","건강 판정 실패 시 의식 잃음"],"hpZero":{"noMajor":"의식 잃음","withMajor":"빈사"},"dying":"즉시 의식 잃음. 다음 라운드 끝부터 매 라운드 건강 판정, 실패하면 사망. 응급처치로만 안정(임시 체력 1).","stabilized":"한 시간마다 건강 판정, 실패하면 다시 빈사","firstAid":"1시간 안에 성공하면 체력 +1. 한 번만(재시도는 강행). 빈사 환자는 강행 취급 안 함.","medicine":"1시간 이상 걸림, 체력 +1D3. 당일이 지나면 어려움. 빈사면 먼저 응급처치로 안정시켜야 함."},"combat":{"page":[100,117],"order":"민첩성 높은 순, 같으면 전투 기능 높은 순","defense":{"dodge":{"tie":"defender","note":"방어자 성공 수준이 같거나 높으면 피함"},"fightBack":{"tie":"attacker","note":"더 높은 쪽이 피해를 줌, 같으면 공격자"}},"outnumbered":"이번 라운드 이미 회피·반격한 대상을 근접 공격하면 보너스 주사위 1 (사격 제외)","extremeDamage":{"rule":"자기 차례 공격에서 극단적 성공 (반격으로는 안 됨)","nonImpaling":"무기 최대 피해 + 피해 보너스 최대","impaling":"무기 최대 피해 + 피해 보너스 최대 + 무기 피해 한 번 더 굴림"},"firearms":{"noDodgeOrFightBack":true,"diveForCover":"회피 성공 시 공격자 페널티 1, 성공 여부와 관계없이 다음 공격 포기","pointBlank":"민첩성/5/3 미터 이내면 보너스 주사위 1","range":{"base":"regular","long":"hard (기본 거리 2배까지)","veryLong":"extreme (4배까지, 치명타는 대성공만)"},"malfunction":"굴림값이 고장 수치 이상이면 발사 안 됨","noDB":true},"noPush":true},"weapons":{"page":[405,409],"note":"자주 쓰는 것만 골라 넣음. 나머지는 시나리오 파일에서 추가.","list":[{"id":"unarmed","ko":"맨손 (주먹·발)","skill":"근접전 (격투)","damage":"1D3","db":"full","impale":false,"range":"접촉"},{"id":"knuckle","ko":"놋쇠 너클","skill":"근접전 (격투)","damage":"1D3+1","db":"full","impale":false,"range":"접촉"},{"id":"torch","ko":"횃불","skill":"근접전 (격투)","damage":"1D6","db":"none","impale":false,"range":"접촉","extra":"불"},{"id":"club_l","ko":"몽둥이, 대형 (야구 배트·부지깽이)","skill":"근접전 (격투)","damage":"1D8","db":"full","impale":false,"range":"접촉"},{"id":"club_s","ko":"몽둥이, 소형 (경찰봉)","skill":"근접전 (격투)","damage":"1D6","db":"full","impale":false,"range":"접촉"},{"id":"hatchet","ko":"손도끼/손낫","skill":"근접전 (도끼)","damage":"1D6+1","db":"full","impale":true,"range":"접촉"},{"id":"knife_l","ko":"단도, 대형 (마체테 등)","skill":"근접전 (격투)","damage":"1D8","db":"full","impale":true,"range":"접촉"},{"id":"knife_m","ko":"단도, 중형 (식칼 등)","skill":"근접전 (격투)","damage":"1D4+2","db":"full","impale":true,"range":"접촉"},{"id":"knife_s","ko":"단도, 소형 (잭나이프 등)","skill":"근접전 (격투)","damage":"1D4","db":"full","impale":true,"range":"접촉"},{"id":"woodaxe","ko":"벌목용 도끼","skill":"근접전 (도끼)","damage":"1D8+2","db":"full","impale":true,"range":"접촉"},{"id":"chainsaw","ko":"동력톱","skill":"근접전 (동력톱)","damage":"2D8","db":"none","impale":true,"range":"접촉","malfunction":95},{"id":"whip","ko":"채찍","skill":"근접전 (채찍)","damage":"1D3","db":"half","impale":false,"range":"3m"},{"id":"pistol_38","ko":".38 또는 9mm 리볼버","skill":"사격 (권총)","damage":"1D10","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":6,"malfunction":100},{"id":"glock17","ko":"글록 17 9mm","skill":"사격 (권총)","damage":"1D10","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":17,"malfunction":98},{"id":"pistol_45","ko":".45 오토매틱","skill":"사격 (권총)","damage":"1D10+2","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":7,"malfunction":100},{"id":"rifle_22","ko":".22 볼트액션 라이플","skill":"사격 (라이플/산탄총)","damage":"1D6+1","db":"none","impale":true,"range":"30m","shots":"1","ammo":6,"malfunction":99},{"id":"rifle_3006","ko":".30-06 볼트액션 라이플","skill":"사격 (라이플/산탄총)","damage":"2D6+4","db":"none","impale":true,"range":"110m","shots":"1","ammo":5,"malfunction":100},{"id":"shotgun12","ko":"12 게이지 산탄총 (펌프)","skill":"사격 (라이플/산탄총)","damage":"4D6/2D6/1D6","db":"none","impale":false,"range":"10/20/50m","shots":"1","ammo":5,"malfunction":100}]}};
+const E = (() => {
+// 크툴루의 부름 7판 규칙 엔진
+// - 브라우저와 Node 양쪽에서 쓰는 순수 함수 모음 (ES 모듈)
+// - 모든 무작위는 rng 인자로 받는다: 테스트할 때 고정값을 넣고, 실제 게임에서는 Math.random
+// - 쪽수 표기는 한국어판 수호자 룰북 쪽수
+
+const LEVELS = ['fumble', 'fail', 'regular', 'hard', 'extreme', 'critical'];
+const LEVEL_KO = {
+  fumble: '대실패', fail: '실패', regular: '보통 성공',
+  hard: '어려운 성공', extreme: '극단적 성공', critical: '대성공',
+};
+const rank = (lv) => LEVELS.indexOf(lv);
+const DIFF_RANK = { regular: rank('regular'), hard: rank('hard'), extreme: rank('extreme') };
+
+const defaultRng = () => Math.random();
+const die = (sides, rng) => 1 + Math.floor(rng() * sides);
+
+// ───────── 주사위 식 ─────────
+// "3D6", "2D6+6", "1D4+2", "1D10+1D4+2", "-1", "1D3+DB", "1D3+DB/2"
+// db: 피해 보너스 식 ("1D4", "-1", "0" 등). maxRoll이면 모든 주사위를 최대값으로.
+function rollExpr(expr, { rng = defaultRng, db = '0', maxRoll = false } = {}) {
+  const src = String(expr).replace(/\s+/g, '').toUpperCase();
+  const terms = src.match(/[+-]?[^+-]+/g) || [];
+  const parts = [];
+  let total = 0;
+  for (const raw of terms) {
+    const sign = raw.startsWith('-') ? -1 : 1;
+    const t = raw.replace(/^[+-]/, '');
+    if (t === 'DB' || t === 'DB/2') {
+      const sub = rollExpr(db, { rng, maxRoll });
+      let v = sub.total;
+      if (t === 'DB/2') v = Math.trunc(v / 2);
+      total += sign * v;
+      parts.push({ term: raw, value: sign * v });
+      continue;
+    }
+    const m = t.match(/^(\d*)D(\d+)$/);
+    if (m) {
+      const n = Number(m[1] || 1), sides = Number(m[2]);
+      const rolls = [];
+      for (let i = 0; i < n; i++) rolls.push(maxRoll ? sides : die(sides, rng));
+      const v = rolls.reduce((a, b) => a + b, 0);
+      total += sign * v;
+      parts.push({ term: raw, rolls, value: sign * v });
+    } else if (/^\d+$/.test(t)) {
+      total += sign * Number(t);
+      parts.push({ term: raw, value: sign * Number(t) });
+    } else {
+      throw new Error(`알 수 없는 주사위 식: ${expr}`);
+    }
+  }
+  return { expr, total, parts };
+}
+
+// ───────── 백분위 주사위 (p.89) ─────────
+// 보너스·페널티는 서로 상쇄, 최대 2개. 10의 자리 주사위를 여럿 굴려
+// 보너스면 가장 낮은 값, 페널티면 가장 높은 값을 쓴다. 00+0 = 100.
+function rollD100({ bonus = 0, penalty = 0, rng = defaultRng } = {}) {
+  let net = bonus - penalty;
+  let overflow = 0;
+  if (net > 2) net = 2;
+  if (net < -2) { overflow = -net - 2; net = -2; }
+  const units = die(10, rng) - 1;              // 0~9
+  const tensCount = 1 + Math.abs(net);
+  const tens = [];
+  for (let i = 0; i < tensCount; i++) tens.push((die(10, rng) - 1) * 10); // 0~90
+  const values = tens.map((t) => (t === 0 && units === 0 ? 100 : t + units));
+  let value;
+  if (net > 0) value = Math.min(...values);
+  else if (net < 0) value = Math.max(...values);
+  else value = values[0];
+  return { value, units, tens, net, penaltyOverflow: overflow };
+}
+
+// ───────── 성공 수준 (p.87~88) ─────────
+// target: 기능·특성치의 온전한 값
+function successLevel(roll, target) {
+  if (roll === 1) return 'critical';
+  const fumbleFrom = target < 50 ? 96 : 100;
+  if (roll >= fumbleFrom) return 'fumble';
+  if (roll <= Math.floor(target / 5)) return 'extreme';
+  if (roll <= Math.floor(target / 2)) return 'hard';
+  if (roll <= target) return 'regular';
+  return 'fail';
+}
+
+// 기준치 계산 (온전한 값 / 절반값 / 5분의 1값)
+const half = (x) => Math.floor(x / 2);
+const fifth = (x) => Math.floor(x / 5);
+function requiredValue(target, difficulty = 'regular') {
+  if (difficulty === 'hard') return half(target);
+  if (difficulty === 'extreme') return fifth(target);
+  return target;
+}
+
+// 대항 수치로 난이도 정하기 (p.86): 50 이상 어려움, 90 이상 극단적
+function difficultyFromOpposition(value) {
+  if (value >= 90) return 'extreme';
+  if (value >= 50) return 'hard';
+  return 'regular';
+}
+
+// ───────── 판정 ─────────
+// kind: 'skill' | 'characteristic' | 'luck' | 'sanity' | 'combat'
+// pushed: 이 판정이 강행 판정인지
+function check({
+  target, difficulty = 'regular', bonus = 0, penalty = 0,
+  kind = 'skill', pushed = false, rng = defaultRng, forcedRoll = null,
+}) {
+  let diff = difficulty;
+  const d = forcedRoll == null ? rollD100({ bonus, penalty, rng }) : { value: forcedRoll, net: bonus - penalty, penaltyOverflow: 0 };
+  // 페널티가 2개를 넘으면 난이도 한 단계 상승 (p.112)
+  for (let i = 0; i < (d.penaltyOverflow || 0); i++) {
+    diff = diff === 'regular' ? 'hard' : 'extreme';
+  }
+  const level = successLevel(d.value, target);
+  // 대실패 판정 기준은 '성공의 기준'(= 난이도 반영 값)으로 본다 (p.88)
+  const req = requiredValue(target, diff);
+  let finalLevel = level;
+  if (level !== 'critical' && d.value >= (req < 50 ? 96 : 100)) finalLevel = 'fumble';
+  const success = finalLevel === 'critical' || (finalLevel !== 'fumble' && rank(finalLevel) >= DIFF_RANK[diff]);
+  return {
+    kind, target, difficulty: diff, required: req, roll: d.value, dice: d,
+    level: finalLevel, levelKo: LEVEL_KO[finalLevel], success, pushed,
+    canPush: canPush({ kind, success, level: finalLevel, pushed }),
+    canSpendLuck: false, // 운 소비 가능 여부는 luckSpendOptions로 따로 계산
+  };
+}
+
+// 강행 판정 가능 여부 (p.83): 기능·특성치 판정의 실패만, 대실패와 이미 강행한 판정은 불가
+function canPush({ kind, success, level, pushed }) {
+  if (success || pushed) return false;
+  if (level === 'fumble') return false;
+  return kind === 'skill' || kind === 'characteristic';
+}
+
+// ───────── 운 소비 (선택 룰, p.97) ─────────
+// 실패한 판정을 성공시키려면 운을 몇 점 써야 하는지 단계별로 돌려준다
+function luckSpendOptions(result, currentLuck) {
+  const { kind, level, pushed, roll, target } = result;
+  if (['luck', 'sanity', 'damage', 'sanityLoss'].includes(kind)) return [];
+  if (pushed) return [];
+  if (level === 'critical' || level === 'fumble') return [];
+  const out = [];
+  for (const lv of ['regular', 'hard', 'extreme']) {
+    if (rank(lv) <= rank(level)) continue;
+    const need = lv === 'regular' ? target : lv === 'hard' ? half(target) : fifth(target);
+    const cost = roll - need;
+    if (cost > 0 && cost <= currentLuck) out.push({ level: lv, levelKo: LEVEL_KO[lv], cost });
+  }
+  return out;
+}
+function spendLuck(result, cost) {
+  const roll = result.roll - cost;
+  const level = successLevel(roll, result.target);
+  return {
+    ...result, roll, level, levelKo: LEVEL_KO[level], luckSpent: cost,
+    success: rank(level) >= DIFF_RANK[result.difficulty], improveMark: false,
+  };
+}
+
+// ───────── 대항 판정 (p.88) ─────────
+function opposed(a, b) {
+  const ra = rank(a.level), rb = rank(b.level);
+  const aOk = a.level !== 'fail' && a.level !== 'fumble';
+  const bOk = b.level !== 'fail' && b.level !== 'fumble';
+  if (!aOk && !bOk) return { winner: null, reason: '둘 다 실패' };
+  if (ra !== rb) return { winner: ra > rb ? 'a' : 'b', reason: '성공 수준' };
+  if (a.target !== b.target) return { winner: a.target > b.target ? 'a' : 'b', reason: '같은 수준, 기준치 비교' };
+  return { winner: null, reason: '교착 (다시 굴리거나 그대로 둠)' };
+}
+
+// ───────── 탐사자 만들기 (p.30~33) ─────────
+function rollCharacteristics(data, rng = defaultRng) {
+  const out = {};
+  for (const c of data.characteristics) out[c.key] = rollExpr(c.roll, { rng }).total * c.mult;
+  return out;
+}
+function rollLuck(data, age, rng = defaultRng) {
+  const r = () => rollExpr(data.luck.roll, { rng }).total * data.luck.mult;
+  if (age >= 15 && age <= 19) return Math.max(r(), r());
+  return r();
+}
+function ageBand(data, age) {
+  return data.ageModifiers.bands.find((b) => age >= b.min && age <= b.max) || null;
+}
+// 교육 향상 판정 n회 (p.32)
+function improveEdu(edu, times, rng = defaultRng) {
+  const log = [];
+  for (let i = 0; i < times; i++) {
+    const r = die(100, rng);
+    if (r > edu) { const g = die(10, rng); edu = Math.min(99, edu + g); log.push({ roll: r, gain: g }); }
+    else log.push({ roll: r, gain: 0 });
+  }
+  return { edu, log };
+}
+function damageBonusAndBuild(data, STR, SIZ) {
+  const sum = STR + SIZ;
+  const t = data.damageBonus.table;
+  const row = t.find((r) => sum >= r.min && sum <= r.max);
+  if (row) return { db: row.db, build: row.build };
+  if (sum < t[0].min) return { db: t[0].db, build: t[0].build };
+  const extra = Math.floor((sum - 445) / 80);           // 445~524가 5D6
+  return { db: `${5 + extra}D6`, build: 6 + extra };
+}
+function moveRate(data, { STR, DEX, SIZ }, age) {
+  let mov = 8;
+  if (STR < SIZ && DEX < SIZ) mov = 7;
+  else if (STR > SIZ && DEX > SIZ) mov = 9;
+  const p = data.move.agePenalty.find((b) => age >= b.min && age <= b.max);
+  return mov + (p ? p.mod : 0);
+}
+function derived(data, ch, { age = 25, cthulhuMythos = 0 } = {}) {
+  const { db, build } = damageBonusAndBuild(data, ch.STR, ch.SIZ);
+  return {
+    hpMax: Math.floor((ch.CON + ch.SIZ) / 10),
+    mpMax: Math.floor(ch.POW / 5),
+    san: ch.POW,
+    sanMax: 99 - cthulhuMythos,
+    db, build,
+    mov: moveRate(data, ch, age),
+    dodgeBase: half(ch.DEX),
+    ownLanguageBase: ch.EDU,
+  };
+}
+
+// 기능 기본값 펼치기: { "관찰력": 25, "근접전 (격투)": 25, "회피": DEX/2 ... }
+function baseSkills(data, ch) {
+  const out = {};
+  const val = (b) => (b === 'EDU' ? ch.EDU : b === 'DEX/2' ? half(ch.DEX) : b);
+  for (const s of data.skills.list) {
+    if (s.children) for (const c of s.children) out[`${s.ko} (${c.ko})`] = val(c.base);
+    else out[s.ko] = val(s.base);
+  }
+  return out;
+}
+
+// ───────── 이성 (p.152~161) ─────────
+// loss: "0/1D4" 같은 표기. 이성 판정은 운·강행 불가.
+function parseSanLoss(loss) {
+  const [ok, ng] = String(loss).split('/');
+  return { onSuccess: ok.trim(), onFail: ng.trim() };
+}
+// state: { san, sanMax, dayStartSan, lostToday, insanity: null|'temporary'|'indefinite'|'permanent' }
+function sanityCheck(state, loss, { rng = defaultRng, forcedRoll = null } = {}) {
+  const res = check({ target: state.san, kind: 'sanity', rng, forcedRoll });
+  const { onSuccess, onFail } = parseSanLoss(loss);
+  let amount;
+  if (res.success) amount = rollExpr(onSuccess, { rng }).total;
+  else if (res.level === 'fumble') amount = rollExpr(onFail, { rng, maxRoll: true }).total;
+  else amount = rollExpr(onFail, { rng }).total;
+  amount = Math.max(0, amount);
+  return { check: res, loss: amount, ...applySanLoss(state, amount) };
+}
+function applySanLoss(state, amount) {
+  const san = Math.max(0, state.san - amount);
+  const lostToday = (state.lostToday || 0) + amount;
+  const dayStart = state.dayStartSan ?? state.san;
+  const effects = [];
+  if (san === 0) effects.push('permanent');
+  if (amount >= 5) effects.push('needIntRoll');                 // 지능 판정 성공 → 일시적 광기
+  if (lostToday >= Math.max(1, fifth(dayStart)) && state.insanity !== 'indefinite') effects.push('indefinite');
+  if (amount > 0 && state.insanity) effects.push('boutWhileInsane'); // 이미 광기 상태에서 또 잃으면 발작
+  return { state: { ...state, san, lostToday, dayStartSan: dayStart }, effects };
+}
+function resolveTemporaryInsanity(intCheck) {
+  return intCheck.success
+    ? { insane: true, type: 'temporary', note: '일시적 광기, 1D10시간 지속, 즉시 광기의 발작' }
+    : { insane: false, note: '기억을 억눌러 광기를 면함' };
+}
+function rollBout(data, mode = 'realtime', rng = defaultRng) {
+  const table = mode === 'realtime' ? data.sanity.boutRealtime : data.sanity.boutSummary;
+  const n = die(10, rng);
+  return { n, name: table[n - 1], duration: mode === 'realtime' ? '1D10 라운드' : '1D10 시간' };
+}
+
+// ───────── 피해와 부상 (p.101, 117~119) ─────────
+// weapon: rules-data의 weapons 항목 / level: 공격 판정 성공 수준 / onOwnTurn: 자기 차례 공격인지
+function rollDamage(weapon, db = '0', { level = 'regular', onOwnTurn = true, rng = defaultRng } = {}) {
+  const dbTerm = weapon.db === 'full' ? '+DB' : weapon.db === 'half' ? '+DB/2' : '';
+  const expr = String(weapon.damage).split('/')[0] + dbTerm;
+  const extreme = onOwnTurn && (level === 'extreme' || level === 'critical');
+  if (!extreme) return { total: Math.max(0, rollExpr(expr, { rng, db }).total), extreme: false };
+  const max = rollExpr(expr, { rng, db, maxRoll: true }).total;
+  if (weapon.impale) {
+    const extra = rollExpr(String(weapon.damage).split('/')[0], { rng }).total;
+    return { total: max + extra, extreme: true, impale: true };
+  }
+  return { total: max, extreme: true, impale: false };
+}
+
+// hp 상태: { hp, hpMax, majorWound, unconscious, dying, dead }
+function applyDamage(s, dmg) {
+  const st = { ...s };
+  const events = [];
+  if (dmg > st.hpMax) { st.hp = 0; st.dead = true; events.push('instantDeath'); return { state: st, events }; }
+  const major = dmg >= Math.ceil(st.hpMax / 2);
+  if (major) { st.majorWound = true; events.push('majorWound', 'fallProne', 'conRollOrUnconscious'); }
+  st.hp = Math.max(0, st.hp - dmg);
+  if (st.hp === 0) {
+    if (st.majorWound) { st.dying = true; st.unconscious = true; events.push('dying'); }
+    else { st.unconscious = true; events.push('unconscious'); }
+  }
+  return { state: st, events };
+}
+// 빈사 상태 라운드 처리: 건강 판정 실패 시 사망
+function dyingRound(s, conCheck) {
+  if (!s.dying) return { state: s, events: [] };
+  if (conCheck.success) return { state: s, events: ['survivesRound'] };
+  return { state: { ...s, dead: true }, events: ['death'] };
+}
+function firstAid(s, faCheck) {
+  if (!faCheck.success) return { state: s, events: ['firstAidFailed'] };
+  if (s.dying) return { state: { ...s, dying: false, stabilized: true, hp: 1 }, events: ['stabilized'] };
+  return { state: { ...s, hp: Math.min(s.hpMax, s.hp + 1), unconscious: s.hp + 1 > 0 ? false : s.unconscious }, events: ['healed1'] };
+}
+
+// ───────── 근접전 (p.101~107) ─────────
+// defense: 'dodge' | 'fightBack' | 'none'
+function resolveMelee(att, def, defense) {
+  const aOk = att.success;
+  if (defense === 'none') return { hit: aOk, damageTo: aOk ? 'defender' : null };
+  const ra = aOk ? rank(att.level) : -1;
+  const rd = def.success ? rank(def.level) : -1;
+  if (ra < 0 && rd < 0) return { hit: false, damageTo: null, note: '둘 다 실패' };
+  if (defense === 'dodge') {
+    if (ra > rd) return { hit: true, damageTo: 'defender' };
+    return { hit: false, damageTo: null, note: '회피 성공' };
+  }
+  // fightBack: 같으면 공격자 승
+  if (ra >= rd) return { hit: true, damageTo: 'defender' };
+  return { hit: false, damageTo: 'attacker', note: '반격 성공 (반격 피해는 극단 피해 없음)' };
+}
+
+// ───────── 사격 (p.110~116) ─────────
+function firearmRangeDifficulty(distance, baseRange) {
+  if (distance <= baseRange) return 'regular';
+  if (distance <= baseRange * 2) return 'hard';
+  if (distance <= baseRange * 4) return 'extreme';
+  return null; // 사거리 밖
+}
+const pointBlankMeters = (DEX) => fifth(DEX) / 3;
+const isMalfunction = (roll, malfunction) => malfunction != null && roll >= malfunction;
+
+// ───────── 성장 (p.92, 97) ─────────
+function improveSkill(value, rng = defaultRng) {
+  const r = die(100, rng);
+  if (r > value || r >= 96) {
+    const g = die(10, rng);
+    return { roll: r, improved: true, gain: g, value: value + g, crossed90: value < 90 && value + g >= 90 };
+  }
+  return { roll: r, improved: false, gain: 0, value };
+}
+function recoverLuck(luck, rng = defaultRng) {
+  const r = die(100, rng);
+  if (r > luck) { const g = die(10, rng); return { roll: r, gain: g, luck: Math.min(99, luck + g) }; }
+  return { roll: r, gain: 0, luck };
+}
+
+return { LEVELS, LEVEL_KO, defaultRng, rollExpr, rollD100, successLevel, half, fifth, requiredValue, difficultyFromOpposition, check, canPush, luckSpendOptions, spendLuck, opposed, rollCharacteristics, rollLuck, ageBand, improveEdu, damageBonusAndBuild, moveRate, derived, baseSkills, parseSanLoss, sanityCheck, applySanLoss, resolveTemporaryInsanity, rollBout, rollDamage, applyDamage, dyingRound, firstAid, resolveMelee, firearmRangeDifficulty, pointBlankMeters, isMalfunction, improveSkill, recoverLuck };
+})();
+const { connect, roomCode, newKey, FIREBASE_CONFIG } = (() => {
+// 통신층: 같은 함수로 Firebase 실시간 DB 또는 로컬 테스트 모드(같은 브라우저 탭끼리)를 쓴다.
+// 방 데이터는 coc/rooms/<방 코드> 아래에 있다.
+//   meta      방 정보
+//   table     테이블 화면에 띄울 장면 묘사
+//   clock     시간 제한
+//   handouts  공개된 핸드아웃
+//   inv       탐사자 시트 (pid별)
+//   req       수호자의 판정 요청
+//   log       굴림 기록
+// 수호자만 아는 정보(시나리오 원문, 비밀, 진행 표시)는 방에 올리지 않고 수호자 브라우저에만 둔다.
+
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyC9m_JLYuqbEecczl_2cYKIbJzoshV-6Gk',
+  authDomain: 'hojil-86236.firebaseapp.com',
+  databaseURL: 'https://hojil-86236-default-rtdb.firebaseio.com',
+  projectId: 'hojil-86236',
+  storageBucket: 'hojil-86236.firebasestorage.app',
+  messagingSenderId: '524215960981',
+  appId: '1:524215960981:web:4bcfa25f29af8606a4629c',
+};
+const ROOT = 'coc/rooms';
+
+const clean = (p) => String(p || '').split('/').filter(Boolean);
+const getAt = (obj, path) => clean(path).reduce((o, k) => (o == null ? undefined : o[k]), obj);
+const setAt = (obj, path, val) => {
+  const ks = clean(path);
+  if (!ks.length) return val;
+  let o = obj;
+  for (let i = 0; i < ks.length - 1; i++) { if (typeof o[ks[i]] !== 'object' || o[ks[i]] === null) o[ks[i]] = {}; o = o[ks[i]]; }
+  if (val === null || val === undefined) delete o[ks[ks.length - 1]]; else o[ks[ks.length - 1]] = val;
+  return obj;
+};
+const newKey = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function makeLocal(room) {
+  const KEY = `coc-local-${room}`;
+  const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } };
+  const listeners = [];
+  let ch = null;
+  try { ch = new BroadcastChannel(KEY); } catch {}
+  const notify = () => { for (const l of listeners) l.cb(getAt(read(), l.path) ?? null); };
+  const write = (state) => {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    notify();
+    if (ch) ch.postMessage('changed');
+  };
+  if (ch) ch.onmessage = notify;
+  window.addEventListener('storage', (e) => { if (e.key === KEY) notify(); });
+  return {
+    mode: 'local',
+    on(path, cb) { const l = { path, cb }; listeners.push(l); cb(getAt(read(), path) ?? null); return () => listeners.splice(listeners.indexOf(l), 1); },
+    async get(path) { return getAt(read(), path) ?? null; },
+    async set(path, val) { write(setAt(read(), path, val)); },
+    async update(path, obj) { const s = read(); for (const [k, v] of Object.entries(obj)) setAt(s, `${path}/${k}`, v); write(s); },
+    async push(path, val) { const k = newKey(); write(setAt(read(), `${path}/${k}`, val)); return k; },
+    async remove(path) { write(setAt(read(), path, null)); },
+  };
+}
+
+function makeFirebase(room) {
+  if (!window.firebase) throw new Error('Firebase를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+  const r = (p) => db.ref([ROOT, room, ...clean(p)].join('/'));
+  return {
+    mode: 'firebase',
+    on(path, cb) { const ref = r(path); const h = (s) => cb(s.val()); ref.on('value', h); return () => ref.off('value', h); },
+    async get(path) { return (await r(path).once('value')).val(); },
+    set: (path, val) => r(path).set(val),
+    update: (path, obj) => r(path).update(obj),
+    async push(path, val) { const ref = r(path).push(); await ref.set(val); return ref.key; },
+    remove: (path) => r(path).remove(),
+  };
+}
+
+function connect(room, { local = false } = {}) {
+  return local ? makeLocal(room) : makeFirebase(room);
+}
+function roomCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({ length: 4 }, () => A[Math.floor(Math.random() * A.length)]).join('');
+}
+
+return { connect, roomCode, newKey, FIREBASE_CONFIG };
+})();
+const { AI_SYSTEM, buildContext, manualPrompt, parseAI, askGemini } = (() => {
+// AI 키퍼 보조: 맥락을 만들고 Gemini(Firebase AI Logic)에 묻거나, 복사·붙여넣기용 글을 만든다.
+// AI는 주사위를 굴리지 않는다. 묘사·NPC 대사·다음 판정 제안만 하고, 수호자가 승인해야 실행된다.
+
+const SDK = 'https://www.gstatic.com/firebasejs/13.4.0';
+
+const AI_SYSTEM = `너는 크툴루의 부름 7판 TRPG의 '보조 수호자'다. 사람 수호자가 너의 제안을 보고 고쳐서 쓴다.
+지켜야 할 것:
+1. 주사위를 굴리거나 결과를 지어내지 않는다. 판정이 필요하면 suggestions에 제안만 한다. 굴림은 툴이 한다.
+2. narration은 탐사자에게 그대로 읽어 줄 글이다. 수호자 메모, NPC의 비밀(secret), 시나리오의 전말, 아직 공개하지 않은 핸드아웃 내용을 절대 넣지 않는다.
+3. 현재 장면의 read(읽어 줄 묘사)와 keeper(수호자 메모)를 근거로 쓰고, 시나리오에 없는 큰 사건을 새로 만들지 않는다.
+4. 판정을 제안할 때는 현재 장면의 checks에 있는 id(checkId)와 sanity id(sanId)를 우선 쓴다. 없으면 skill만 적는다.
+5. 공포는 직접 보여 주기보다 소리, 냄새, 그림자, 어긋난 디테일로 암시한다. 문장은 한국어 경어체(~합니다), 2~5문장.
+6. 플레이어의 선택을 대신하지 않는다. 탐사자가 무엇을 느끼는지는 써도, 무엇을 하는지는 쓰지 않는다.
+7. 반드시 아래 JSON 하나만 출력한다. 다른 글이나 코드 블록 표시는 쓰지 않는다.
+{
+  "narration": "탐사자에게 읽어 줄 묘사",
+  "npcLines": [{"npc": "npc id", "line": "대사"}],
+  "keeperNote": "수호자에게만 보이는 판단 근거 1~3문장",
+  "suggestions": [
+    {"type": "check", "checkId": "판정 id 또는 null", "skill": "기능 이름", "to": "all 또는 탐사자 pid", "difficulty": "regular|hard|extreme", "reason": "이유"},
+    {"type": "sanity", "sanId": "이성 id 또는 null", "loss": "0/1D4", "to": "all 또는 pid", "reason": "이유"},
+    {"type": "reveal", "handout": "핸드아웃 id", "reason": "이유"},
+    {"type": "flag", "flag": "진행 표시 id", "reason": "이유"},
+    {"type": "scene", "to": "장면 id", "reason": "이유"}
+  ]
+}`;
+
+const TASKS = {
+  respond: '플레이어들의 최근 행동과 말에 응답하라. 필요한 판정이 있으면 제안하라.',
+  open: '지금 장면을 시작하는 도입 묘사를 써라. read를 바탕으로 하되 그대로 베끼지 말고 탐사자들의 상황에 맞게 다듬어라.',
+  result: '가장 최근 판정 결과를 이야기로 풀어 써라. 장면 checks의 outcomes 문구를 근거로 한다.',
+  next: '이야기가 막혔다. 지금 장면에서 플레이어를 자연스럽게 다음으로 이끌 묘사와 판정·단서를 제안하라.',
+};
+
+function buildContext({ scn, keeperMd, scene, flags, party, logs, chat, history, actions, task, revealed }) {
+  const strip = (s) => {
+    if (!s) return null;
+    const { id, title, act, read, keeper, checks, sanity, clues, handouts, npcs, exits } = s;
+    return { id, title, act, read, keeper, checks, sanity, clues, handouts, npcs, exits };
+  };
+  const npcs = (scene?.npcs || []).map((id) => scn.npcs.find((n) => n.id === id)).filter(Boolean);
+  const ctx = {
+    시나리오: { 제목: scn.meta.title, 배경: scn.meta.setting, 분위기: scn.meta.tone, 하우스룰: scn.rules?.houseRules || [] },
+    현재_장면: strip(scene),
+    장면_NPC: npcs,
+    켜진_진행_표시: Object.keys(flags || {}).filter((k) => flags[k]),
+    공개된_핸드아웃: revealed || [],
+    탐사자: party.map((p) => ({ pid: p.pid, 이름: p.name, 백스토리_칸: p.label || null, 직업: p.occupation, 체력: `${p.hp}/${p.hpMax}`, 이성: p.san, 상태: p.state })),
+    최근_굴림: logs.slice(-12).map((l) => ({ 누가: l.name, 판정: l.title, 판정id: l.checkId || null, 굴림: l.roll, 결과: l.levelKo, 성공: l.success, 비고: l.detail || '' })),
+    최근_플레이어_말: chat.slice(-12).map((c) => `${c.name}: ${c.text}`),
+    직전_AI_묘사: history.slice(-4),
+  };
+  const guide = keeperMd ? `\n\n[수호자 안내(keeper.md) — 비밀 포함, narration에 쓰지 말 것]\n${keeperMd.slice(0, 9000)}` : '';
+  const ask = `[이번 요청]\n${TASKS[task] || TASKS.respond}${actions ? `\n수호자가 덧붙인 상황: ${actions}` : ''}`;
+  return `[게임 상황 JSON]\n${JSON.stringify(ctx, null, 1)}${guide}\n\n${ask}`;
+}
+
+function manualPrompt(user) {
+  return `${AI_SYSTEM}\n\n${user}`;
+}
+
+function parseAI(text) {
+  if (!text) return null;
+  let t = String(text).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a >= 0 && b > a) t = t.slice(a, b + 1);
+  try {
+    const o = JSON.parse(t);
+    return { narration: o.narration || '', npcLines: o.npcLines || [], keeperNote: o.keeperNote || '', suggestions: Array.isArray(o.suggestions) ? o.suggestions : [] };
+  } catch {
+    return { narration: String(text).trim(), npcLines: [], keeperNote: 'JSON 형식이 아니어서 전체를 묘사로 넣었습니다.', suggestions: [] };
+  }
+}
+
+let cached = null;
+async function getModel(cfg, firebaseConfig) {
+  const key = JSON.stringify([cfg.model, cfg.siteKey, cfg.debug]);
+  if (cached && cached.key === key) return cached.model;
+  const { initializeApp, getApps } = await import(`${SDK}/firebase-app.js`);
+  const { getAI, getGenerativeModel, GoogleAIBackend } = await import(`${SDK}/firebase-ai.js`);
+  const app = getApps().find((x) => x.name === 'coc-ai') || initializeApp(firebaseConfig, 'coc-ai');
+  if (cfg.debug) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  if (cfg.siteKey || cfg.debug) {
+    const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import(`${SDK}/firebase-app-check.js`);
+    try { initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(cfg.siteKey || 'debug'), isTokenAutoRefreshEnabled: true }); } catch (e) { if (!/already/i.test(e.message)) throw e; }
+  }
+  const ai = getAI(app, { backend: new GoogleAIBackend() });
+  const model = getGenerativeModel(ai, {
+    model: cfg.model || 'gemini-3.5-flash',
+    systemInstruction: AI_SYSTEM,
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+  });
+  cached = { key, model };
+  return model;
+}
+
+async function askGemini(cfg, firebaseConfig, user) {
+  if (window.__AI_MOCK) return window.__AI_MOCK(AI_SYSTEM, user);
+  const model = await getModel(cfg, firebaseConfig);
+  const r = await model.generateContent(user);
+  return r.response.text();
+}
+
+return { AI_SYSTEM, buildContext, manualPrompt, parseAI, askGemini };
+})();
+// 크툴루의 부름 테이블 — 로비 · 수호자 · 탐사자 · 테이블 화면
+
+
+
+
+const RULES = window.__RULES || await (await fetch(new URL('../../engine/rules-data.json', import.meta.url))).json();
+
+// ───────── 공통 도구 ─────────
+const $app = document.getElementById('app');
+const q = new URLSearchParams(location.search);
+const ROOM = (q.get('room') || '').toUpperCase();
+const ROLE = q.get('role') || '';
+const LOCAL = q.get('local') === '1';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const now = () => Date.now();
+const link = (role, extra = '') => `${location.pathname}?room=${ROOM}&role=${role}${LOCAL ? '&local=1' : ''}${extra}`;
+const fullLink = (role) => new URL(link(role), location.href).href;
+const CH = Object.fromEntries(RULES.characteristics.map((c) => [c.ko, c.key]));
+const CH_KO = Object.fromEntries(RULES.characteristics.map((c) => [c.key, c.ko]));
+const SOCIAL = ['말재주', '매혹', '설득', '위협'];
+const LV = E.LEVELS;
+const rankOf = (lv) => LV.indexOf(lv);
+const sortByAt = (obj) => Object.entries(obj || {}).map(([id, v]) => ({ id, ...v })).sort((a, b) => (a.at || 0) - (b.at || 0));
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+let renderFn = () => {};
+let pending = false;
+function render() {
+  const a = document.activeElement;
+  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.dataset.keep !== 'no') { pending = true; return; }
+  pending = false;
+  const scroll = window.scrollY;
+  renderFn();
+  window.scrollTo(0, scroll);
+}
+$app.addEventListener('focusout', () => setTimeout(() => { if (pending) render(); }, 0));
+
+const actions = {};
+$app.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled) return;
+  const fn = actions[b.dataset.act];
+  if (fn) { e.preventDefault(); fn(b.dataset, b); }
+});
+$app.addEventListener('change', (e) => {
+  const el = e.target.closest('[data-change]');
+  if (el && actions[el.dataset.change]) actions[el.dataset.change](el.dataset, el);
+});
+
+// 기능·특성치 값 찾기
+function targetFor(inv, name) {
+  if (!inv) return 0;
+  if (name === '운') return inv.luck;
+  if (name === '이성') return inv.san;
+  if (name === '지식') return inv.ch.EDU;
+  if (name === '아이디어') return inv.ch.INT;
+  if (CH[name]) return inv.ch[CH[name]];
+  const sk = inv.skills || {};
+  if (sk[name] != null) return sk[name];
+  const cand = Object.entries(sk).filter(([k]) => k.startsWith(name + ' (') || name.startsWith(k + ' ('));
+  if (cand.length) return Math.max(...cand.map(([, v]) => v));
+  return null;
+}
+const kindOf = (skill) => (skill === '운' ? 'luck' : skill === '이성' ? 'sanity' : CH[skill] || ['지식', '아이디어'].includes(skill) ? 'characteristic' : 'skill');
+
+function pickOutcome(outcomes, log) {
+  if (!outcomes || !log) return null;
+  const r = rankOf(log.level);
+  if (log.level === 'critical' && outcomes.critical) return ['critical', outcomes.critical];
+  if (log.level === 'fumble' && outcomes.fumble) return ['fumble', outcomes.fumble];
+  if (log.success && r >= rankOf('extreme') && outcomes['extreme+']) return ['extreme+', outcomes['extreme+']];
+  if (log.success && r >= rankOf('hard') && outcomes['hard+']) return ['hard+', outcomes['hard+']];
+  if (log.success && outcomes.success) return ['success', outcomes.success];
+  if (log.success && outcomes['hard+'] && !outcomes.success) return null;
+  if (!log.success && outcomes.fail) return ['fail', outcomes.fail];
+  return null;
+}
+const OUT_KO = { critical: '대성공', 'extreme+': '극단적 성공 이상', 'hard+': '어려운 성공 이상', success: '성공', fail: '실패', fumble: '대실패' };
+
+// 이미지를 줄여 dataURL로
+function shrinkImage(file, max = 1100) {
+  return new Promise((res) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => res(null);
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+// ───────── 방 연결과 공유 상태 ─────────
+let net = null;
+const room = { meta: null, table: null, clock: null, handouts: {}, inv: {}, req: {}, log: {}, chat: {} };
+function subscribe() {
+  for (const k of Object.keys(room)) net.on(k, (v) => { room[k] = v || (k === 'meta' || k === 'table' || k === 'clock' ? null : {}); render(); });
+}
+setInterval(() => { document.querySelectorAll('[data-clock]').forEach((el) => { el.textContent = clockText(); }); }, 1000);
+function clockText() {
+  const c = room.clock;
+  if (!c || !c.endsAt) return '';
+  const left = Math.max(0, c.endsAt - now());
+  const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+  return `${c.label} ${m}:${String(s).padStart(2, '0')}${left === 0 ? ' — 다 탐' : ''}`;
+}
+
+// ═════════ 로비 ═════════
+function lobby() {
+  renderFn = () => {
+    $app.innerHTML = `
+    <div class="lobby">
+      <div>
+        <div class="label">Call of Cthulhu · 7th</div>
+        <h1>크툴루의 부름 테이블</h1>
+        <p class="muted">수호자가 방을 만들고 시나리오 폴더를 불러오면, 탐사자는 각자 컴퓨터나 휴대폰으로, 테이블 화면은 TV나 화면 공유로 들어옵니다.</p>
+      </div>
+      <div class="grid">
+        <div class="card stack">
+          <div class="label">Keeper · 수호자</div>
+          <p class="small muted" style="margin:0">새 방을 만듭니다. 방 코드는 4글자입니다.</p>
+          <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text2)"><input type="checkbox" id="localMode"> 로컬 테스트 모드 (이 브라우저의 탭끼리만)</label>
+          <button class="primary" data-act="create">방 만들기</button>
+        </div>
+        <div class="card stack">
+          <div class="label">Join · 들어가기</div>
+          <label>방 코드<input id="code" maxlength="4" placeholder="ABCD" style="text-transform:uppercase"></label>
+          <div class="row">
+            <button class="primary" data-act="join" data-role="player">탐사자로</button>
+            <button data-act="join" data-role="table">테이블 화면</button>
+            <button data-act="join" data-role="keeper">수호자 복귀</button>
+          </div>
+          <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text2)"><input type="checkbox" id="localJoin"> 로컬 테스트 모드</label>
+        </div>
+      </div>
+    </div>`;
+  };
+  actions.create = async () => {
+    const local = document.getElementById('localMode').checked;
+    const code = roomCode();
+    try {
+      const n = connect(code, { local });
+      await n.set('meta', { createdAt: now(), scenarioTitle: '', scene: '' });
+      location.href = `${location.pathname}?room=${code}&role=keeper${local ? '&local=1' : ''}`;
+    } catch (err) { toast(err.message); }
+  };
+  actions.join = (d) => {
+    const code = (document.getElementById('code').value || '').trim().toUpperCase();
+    if (code.length !== 4) return toast('방 코드 4글자를 넣어 주세요.');
+    const local = document.getElementById('localJoin').checked;
+    location.href = `${location.pathname}?room=${code}&role=${d.role}${local ? '&local=1' : ''}`;
+  };
+  render();
+}
+
+// ═════════ 수호자 ═════════
+function keeper() {
+  const KS = `coc-keeper-${ROOM}`;
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(KS) || '{}'); } catch { return {}; } })();
+  const ks = Object.assign({ scene: null, flags: {}, once: {}, entered: {}, items: {}, panel: 'party', showKeeperMd: false, npcRoll: {}, aiCfg: { mode: 'firebase', model: 'gemini-3.5-flash', siteKey: '', debug: false }, aiHistory: [], aiOpen: true, aiSettings: false }, saved);
+  let aiRes = null; let aiBusy = false; let aiErr = '';
+  let scn = null; let images = {}; let keeperMd = '';
+  const SCN = `coc-keeper-scn-${ROOM}`;
+  try {
+    const s = JSON.parse(localStorage.getItem(SCN) || 'null');
+    if (s) { scn = s.scn; images = s.images || {}; keeperMd = s.md || ''; }
+  } catch {}
+  const save = () => { const { npcRoll, ...rest } = ks; localStorage.setItem(KS, JSON.stringify(rest)); };
+  const scene = () => scn && scn.scenes.find((x) => x.id === ks.scene);
+  const flagOn = (f) => !!ks.flags[f];
+  const condOk = (c) => {
+    if (!c) return true;
+    return String(c).split('&').every((t) => { t = t.trim(); return t.startsWith('!') ? !flagOn(t.slice(1)) : flagOn(t); });
+  };
+  const invList = () => sortByAt(room.inv).map((x) => ({ ...x, pid: x.id }));
+
+  async function loadFiles(files) {
+    files = [...files];
+    const rel = (f) => (f.webkitRelativePath || f.name).split('/').slice(f.webkitRelativePath ? 1 : 0).join('/');
+    const sj = files.find((f) => rel(f).endsWith('scenario.json'));
+    if (!sj) return toast('scenario.json을 찾지 못했습니다.');
+    try { scn = JSON.parse(await sj.text()); } catch { return toast('scenario.json을 읽을 수 없습니다.'); }
+    const md = files.find((f) => rel(f).endsWith('keeper.md'));
+    keeperMd = md ? await md.text() : '';
+    images = {};
+    for (const h of scn.handouts || []) {
+      if (!h.image) continue;
+      const base = h.image.split('/').pop();
+      const f = files.find((x) => rel(x) === h.image || rel(x).endsWith('/' + h.image)) || files.find((x) => x.name === base);
+      if (f) images[h.image] = await shrinkImage(f);
+    }
+    try { localStorage.setItem(SCN, JSON.stringify({ scn, images, md: keeperMd })); }
+    catch { try { localStorage.setItem(SCN, JSON.stringify({ scn, images: {}, md: keeperMd })); toast('그림이 커서 새로고침하면 다시 불러와야 합니다.'); } catch {} }
+    ks.scene = scn.start; ks.flags = {}; ks.once = {}; ks.entered = {}; ks.items = {};
+    enterScene(scn.start);
+    await net.update('meta', { scenarioTitle: scn.meta.title, scenarioHanja: scn.meta.titleHanja || '', epigraph: scn.meta.epigraph || '' });
+    toast(`「${scn.meta.title}」을 불러왔습니다.`);
+  }
+
+  function applyEffect(e, pid) {
+    const inv = pid && room.inv[pid];
+    switch (e.type) {
+      case 'setFlag': ks.flags[e.flag] = true; break;
+      case 'clearFlag': delete ks.flags[e.flag]; break;
+      case 'give': ks.items[e.item] = true; break;
+      case 'reveal': revealHandout(e.handout); break;
+      case 'goto': goScene(e.scene); break;
+      case 'clock': if (e.action === 'start') startClock(e.clock); else net.set('clock', null); break;
+      case 'damage': {
+        const targets = e.target === 'all' ? invList().map((x) => x.pid) : pid ? [pid] : [];
+        for (const t of targets) { const amt = E.rollExpr(e.expr).total; damage(t, amt, `${e.expr}`); }
+        break;
+      }
+      case 'sanity': requestSan({ loss: e.loss, trigger: '효과로 인한 이성 판정' }, pid || 'all'); break;
+      case 'skill': if (inv) net.set(`inv/${pid}/skills/${e.skill}`, (targetFor(inv, e.skill) || 0) + e.amount); break;
+      case 'mp': if (inv) net.set(`inv/${pid}/mp`, Math.max(0, inv.mp + e.amount)); break;
+      case 'mythos': if (inv) net.update(`inv/${pid}`, { [`skills/크툴루 신화`]: (inv.skills['크툴루 신화'] || 0) + e.amount, sanMax: inv.sanMax - e.amount }); break;
+    }
+    save(); render();
+  }
+  const effectLabel = (e) => ({ setFlag: `표시 켜기: ${flagName(e.flag)}`, clearFlag: `표시 끄기: ${flagName(e.flag)}`, give: `획득: ${itemName(e.item)}`, reveal: `핸드아웃 공개: ${e.handout}`, goto: `장면 이동`, clock: '시간 제한', damage: `피해 ${e.expr}${e.target === 'all' ? ' (전원)' : ''}`, sanity: `이성 ${e.loss}`, skill: `${e.skill} +${e.amount}`, mp: `마력 ${e.amount}`, mythos: `크툴루 신화 +${e.amount}` }[e.type] || e.type);
+  const flagName = (f) => (scn?.flags.find((x) => x.id === f) || {}).label || f;
+  const itemName = (i) => (scn?.items.find((x) => x.id === i) || {}).name || i;
+
+  function enterScene(id) {
+    const s = scn.scenes.find((x) => x.id === id);
+    if (!s) return;
+    ks.scene = id;
+    if (!ks.entered[id]) {
+      ks.entered[id] = true;
+      for (const e of s.onEnter || []) if (['setFlag', 'clearFlag', 'give', 'clock'].includes(e.type)) applyEffect(e);
+    }
+    net.update('meta', { scene: s.title, act: s.act });
+    save();
+  }
+  function goScene(id) { enterScene(id); render(); window.scrollTo(0, 0); }
+
+  function revealHandout(id) {
+    const h = scn.handouts.find((x) => x.id === id);
+    if (!h) return;
+    net.set(`handouts/${id}`, { title: h.title, text: h.text || '', note: h.note || '', image: images[h.image] || null, at: now() });
+    toast(`${h.title} 공개`);
+  }
+  function startClock(id, minutes) {
+    const c = scn.clocks.find((x) => x.id === id) || { label: '시간 제한' };
+    const m = minutes || parseInt(prompt(`${c.label} — 몇 분? (보이스 ${c.voice || ''}, 텍스트 ${c.text || ''})`, '60'), 10);
+    if (!m) return;
+    net.set('clock', { label: c.label, endsAt: now() + m * 60000, minutes: m });
+  }
+  function damage(pid, amt, why) {
+    const inv = room.inv[pid]; if (!inv) return;
+    const r = E.applyDamage({ hp: inv.hp, hpMax: inv.hpMax, majorWound: !!inv.majorWound }, amt);
+    const st = r.state;
+    const state = st.dead ? '사망' : st.dying ? '빈사' : st.unconscious ? '의식 잃음' : st.majorWound ? '중상' : inv.state;
+    net.update(`inv/${pid}`, { hp: st.hp, majorWound: !!st.majorWound, dying: !!st.dying, unconscious: !!st.unconscious, dead: !!st.dead, state });
+    net.push('log', { at: now(), pid, name: inv.name, title: `피해 ${amt}${why ? ` (${why})` : ''}`, event: true, detail: r.events.map((x) => ({ majorWound: '중상', instantDeath: '즉사', dying: '빈사', unconscious: '의식 잃음', fallProne: '쓰러짐', conRollOrUnconscious: '건강 판정 필요' }[x] || x)).join(' · ') });
+    if (r.events.includes('conRollOrUnconscious') && !st.dying && !st.dead) net.push('req', { at: now(), to: pid, title: '중상 — 의식을 잃지 않으려면 건강 판정', skill: '건강', kind: 'characteristic', difficulty: 'regular' });
+  }
+  function request(c, to) {
+    net.push('req', { at: now(), to, checkId: c.id, title: c.who ? `${c.skill} — ${c.who}` : c.skill, skill: c.skill, kind: kindOf(c.skill), difficulty: c.difficulty || 'regular', bonus: c.bonus || 0, penalty: c.penalty || 0, opposed: c.opposed || null, note: c.when || '' });
+    toast(`${c.skill} 판정을 요청했습니다.`);
+  }
+  function requestSan(z, to, useAlt) {
+    const loss = useAlt && z.alt ? z.alt.loss : z.loss;
+    if (z.once) { ks.once[z.once] = true; save(); }
+    net.push('req', { at: now(), to, sanId: z.id || null, title: `이성 ${loss} — ${z.trigger}`, skill: '이성', kind: 'sanity', loss, difficulty: 'regular' });
+    toast(`이성 ${loss} 판정을 요청했습니다.`);
+  }
+
+  // 행동
+  actions.load = () => document.getElementById('scnFiles').click();
+  actions.loadOne = () => document.getElementById('scnFile').click();
+  actions.filesPicked = (d, el) => loadFiles(el.files);
+  actions.scene = (d) => goScene(d.id);
+  actions.sendRead = () => { const s = scene(); net.set('table', { title: s.title, act: s.act || '', read: s.read || '', at: now() }); toast('테이블에 보냈습니다.'); };
+  actions.sendText = (d) => { const s = scene(); const c = (s.clues || []).find((x) => x.id === d.id); net.set('table', { title: s.title, act: s.act || '', read: c.text, at: now() }); toast('테이블에 보냈습니다.'); };
+  actions.req = (d) => { const s = scene(); const c = s.checks.find((x) => x.id === d.id); request(c, document.getElementById(`to-${d.id}`).value); };
+  actions.san = (d) => { const s = scene(); const z = s.sanity.find((x) => x.id === d.id); requestSan(z, document.getElementById(`to-${d.id}`).value, d.alt === '1'); };
+  actions.reveal = (d) => revealHandout(d.id);
+  actions.hide = (d) => net.remove(`handouts/${d.id}`);
+  actions.effect = (d) => { const e = JSON.parse(d.e); applyEffect(e, d.pid); if (d.lid) net.set(`log/${d.lid}/applied/${d.ei}`, true); };
+  actions.flag = (d, el) => { if (el.checked) ks.flags[d.id] = true; else delete ks.flags[d.id]; save(); render(); };
+  actions.panel = (d) => { ks.panel = d.p; save(); render(); };
+  actions.adj = (d) => { const inv = room.inv[d.pid]; const v = Math.max(0, (inv[d.k] || 0) + Number(d.v)); net.set(`inv/${d.pid}/${d.k}`, d.k === 'hp' ? Math.min(v, inv.hpMax) : v); if (d.k === 'san') net.set(`inv/${d.pid}/lostToday`, Math.max(0, (inv.lostToday || 0) - Number(d.v))); };
+  actions.dmg = (d) => { const a = parseInt(prompt('피해량', '1'), 10); if (a > 0) damage(d.pid, a); };
+  actions.stateMemo = (d) => { const v = prompt('상태 메모 (예: 홀림, 일시적 광기)', room.inv[d.pid].state || ''); if (v != null) net.set(`inv/${d.pid}/state`, v); };
+  actions.backstory = (d) => { const sel = document.getElementById(`bs-${d.pid}`).value; const b = scn.backstories.find((x) => x.id === sel); if (b) { net.update(`inv/${d.pid}`, { label: b.label, backstory: b.player }); toast(`${b.label} 백스토리를 보냈습니다.`); } };
+  actions.kick = (d) => { if (confirm('이 탐사자를 방에서 지울까요?')) net.remove(`inv/${d.pid}`); };
+  actions.newDay = () => { for (const i of invList()) net.update(`inv/${i.pid}`, { dayStartSan: i.san, lostToday: 0 }); toast('새 날이 시작됐습니다. 하루 이성 손실을 0으로 돌렸습니다.'); };
+  actions.cancelReq = (d) => net.remove(`req/${d.id}`);
+  actions.clock = (d) => startClock(d.id);
+  actions.clockStop = () => net.set('clock', null);
+  actions.free = () => {
+    const skill = document.getElementById('fSkill').value.trim(); if (!skill) return toast('기능 이름을 넣어 주세요.');
+    const ov = parseInt(document.getElementById('fOpp').value, 10);
+    request({ id: null, skill, who: '수호자 요청', difficulty: document.getElementById('fDiff').value, bonus: +document.getElementById('fB').value || 0, penalty: +document.getElementById('fP').value || 0, opposed: ov ? { label: '대항', value: ov } : null }, document.getElementById('fTo').value);
+  };
+  actions.freeSan = () => { const loss = document.getElementById('fLoss').value.trim(); if (loss) requestSan({ loss, trigger: '수호자 요청' }, document.getElementById('fTo').value); };
+  actions.toggleMd = () => { ks.showKeeperMd = !ks.showKeeperMd; save(); render(); };
+  actions.npcRoll = (d) => { const v = parseInt(d.v, 10); const r = E.check({ target: v, kind: 'combat' }); ks.npcRoll[d.k] = `${r.roll} · ${r.levelKo}`; render(); };
+  actions.copy = (d) => { navigator.clipboard?.writeText(d.v); toast('주소를 복사했습니다.'); };
+
+  // ── AI 키퍼 보조 ──
+  const aiUser = (task) => buildContext({
+    scn, keeperMd, scene: scene(), flags: ks.flags, party: invList(), logs: sortByAt(room.log), chat: sortByAt(room.chat),
+    history: ks.aiHistory, actions: (document.getElementById('aiActions') || {}).value || '', task, revealed: Object.keys(room.handouts || {}),
+  });
+  actions.aiAsk = async (d) => {
+    if (!scn || aiBusy) return;
+    const user = aiUser(d.task);
+    if (ks.aiCfg.mode === 'manual') {
+      try { await navigator.clipboard.writeText(manualPrompt(user)); toast('Gemini에 붙여 넣을 글을 복사했습니다.'); } catch { toast('복사하지 못했습니다. 아래 칸의 글을 직접 복사하세요.'); }
+      aiRes = { manual: manualPrompt(user) }; render(); return;
+    }
+    aiBusy = true; aiErr = ''; render();
+    try { aiRes = parseAI(await askGemini(ks.aiCfg, FIREBASE_CONFIG, user)); aiRes.done = {}; }
+    catch (e) { aiErr = `AI 호출 실패: ${e.message || e}. 설정의 App Check 항목을 확인하거나 '복사·붙여넣기' 방식으로 바꿔 보세요.`; }
+    aiBusy = false; render();
+  };
+  actions.aiPaste = () => { const t = document.getElementById('aiPasteBox').value; if (!t.trim()) return; aiRes = parseAI(t); aiRes.done = {}; render(); };
+  actions.aiSendNarr = () => {
+    const t = document.getElementById('aiNarr').value.trim(); if (!t) return; const s = scene();
+    net.set('table', { title: s.title, act: s.act || '', read: t, at: now() });
+    ks.aiHistory = [...ks.aiHistory, t].slice(-6); save(); toast('테이블에 보냈습니다.');
+  };
+  actions.aiSendNpc = (d) => {
+    const l = aiRes.npcLines[Number(d.i)]; const n = scn.npcs.find((x) => x.id === l.npc); const s = scene();
+    net.set('table', { title: s.title, act: s.act || '', read: `${n ? n.name.split(' (')[0] : l.npc}: "${l.line}"`, at: now() }); toast('대사를 테이블에 보냈습니다.');
+  };
+  actions.aiSug = (d) => {
+    const g = aiRes.suggestions[Number(d.i)]; const s = scene();
+    const to = g.to && g.to !== 'all' && room.inv[g.to] ? g.to : 'all';
+    if (g.type === 'check') { const c = (s.checks || []).find((x) => x.id === g.checkId); request(c || { id: null, skill: g.skill, who: 'AI 제안', difficulty: g.difficulty || 'regular' }, to); }
+    else if (g.type === 'sanity') { const z = (s.sanity || []).find((x) => x.id === g.sanId); if (z && z.once && ks.once[z.once]) return toast('이미 한 이성 판정입니다.'); requestSan(z || { loss: g.loss, trigger: g.reason || 'AI 제안' }, to); }
+    else if (g.type === 'reveal') { if (!scn.handouts.find((h) => h.id === g.handout)) return toast('없는 핸드아웃입니다.'); revealHandout(g.handout); }
+    else if (g.type === 'flag') { if (!scn.flags.find((f) => f.id === g.flag)) return toast('없는 진행 표시입니다.'); ks.flags[g.flag] = true; save(); }
+    else if (g.type === 'scene') { if (!scn.scenes.find((x) => x.id === g.to)) return toast('없는 장면입니다.'); goScene(g.to); }
+    aiRes.done[d.i] = true; render();
+  };
+  actions.aiCfg = (d, el) => { ks.aiCfg[d.k] = el.type === 'checkbox' ? el.checked : el.value.trim(); save(); render(); };
+  actions.aiToggle = (d) => { ks[d.k] = !ks[d.k]; save(); render(); };
+  actions.exportLog = () => {
+    const text = sortByAt(room.log).map((l) => `${new Date(l.at).toLocaleTimeString()}  ${l.name || ''}  ${l.title}  ${l.roll ?? ''} ${l.levelKo || ''} ${l.detail || ''}`).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = `coc-log-${ROOM}.txt`; a.click();
+  };
+
+  const toSelect = (id) => `<select id="to-${id}" aria-label="대상"><option value="all">전원</option>${invList().map((i) => `<option value="${i.pid}">${esc(i.name)}</option>`).join('')}</select>`;
+
+  function viewCheck(c) {
+    const logs = sortByAt(room.log).filter((l) => l.checkId === c.id);
+    const tag = `${c.skill}${c.difficulty === 'hard' ? ' · 어려움' : c.difficulty === 'extreme' ? ' · 극단적' : ''}${c.opposed ? ` · 대항 ${c.opposed.value}` : ''}${c.penalty ? ` · 페널티 ${c.penalty}` : ''}${c.bonus ? ` · 보너스 ${c.bonus}` : ''}`;
+    const blocked = c.if && !condOk(c.if);
+    return `<div class="check">
+      <div class="what"><div style="font-size:16px">${esc(c.skill)} <span class="muted small">— ${esc(c.who)}</span></div>
+        ${c.when ? `<div class="small muted">${esc(c.when)}</div>` : ''}
+        ${blocked ? `<div class="small bad">조건 미충족: ${esc(c.if)}</div>` : ''}</div>
+      <span class="mono gold small">${esc(tag)}</span>
+      ${toSelect(c.id)}
+      <button data-act="req" data-id="${c.id}">판정 요청</button>
+      ${logs.map((l) => {
+        const o = pickOutcome(c.outcomes, l);
+        return `<div class="outcome"><b>${esc(l.name)}</b> · <span class="mono">${l.roll}</span> ${esc(l.levelKo)} ${l.success ? '<span class="ok">성공</span>' : '<span class="bad">실패</span>'}${l.opp ? ` <span class="muted small">(상대 ${l.opp.roll} ${esc(l.opp.levelKo)})</span>` : ''}
+          ${o ? `<div style="margin-top:4px"><span class="tag">${OUT_KO[o[0]]}</span> ${esc(o[1].text)}</div>
+          <div class="row" style="margin-top:6px">${(o[1].effects || []).map((e, ei) => `<button class="small" data-act="effect" data-e='${esc(JSON.stringify(e))}' data-pid="${l.pid}" data-lid="${l.id}" data-ei="${ei}" ${l.applied && l.applied[ei] ? 'disabled' : ''}>${l.applied && l.applied[ei] ? '적용함 · ' : ''}${esc(effectLabel(e))}</button>`).join('')}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+  function viewSan(z) {
+    const used = z.once && ks.once[z.once];
+    const blocked = z.if && !condOk(z.if);
+    return `<div class="check">
+      <div class="what"><div style="font-size:16px">이성 <span class="mono">${esc(z.loss)}</span>${z.alt ? ` <span class="muted small">또는 ${esc(z.alt.loss)} (${esc(flagName(z.alt.if))})</span>` : ''}</div>
+        <div class="small muted">${esc(z.trigger)}${z.once ? ' · 한 번만' : ''}${blocked ? ' · <span class="bad">조건 미충족</span>' : ''}</div></div>
+      ${toSelect(z.id)}
+      <button data-act="san" data-id="${z.id}" ${used ? 'disabled' : ''}>${used ? '이미 함' : '요청'}</button>
+      ${z.alt ? `<button data-act="san" data-id="${z.id}" data-alt="1" ${used ? 'disabled' : ''}>${esc(z.alt.loss)}로 요청</button>` : ''}
+    </div>`;
+  }
+  function viewNpc(id) {
+    const n = scn.npcs.find((x) => x.id === id); if (!n) return '';
+    const st = n.stats ? Object.entries(n.stats).map(([k, v]) => `${CH_KO[k] || k} ${v}`).join(' · ') : '';
+    const sk = n.skills ? Object.entries(n.skills).map(([k, v]) => `<button class="small" data-act="npcRoll" data-k="${esc(id + k)}" data-v="${v}">${esc(k)} ${v}</button>`).join('') : '';
+    const atk = (n.attacks || []).map((a) => `<button class="small" data-act="npcRoll" data-k="${esc(id + a.name)}" data-v="${a.value}">${esc(a.name)} ${a.value}% (${esc(a.damage)})</button>`).join('');
+    const rolls = Object.entries(ks.npcRoll).filter(([k]) => k.startsWith(id)).map(([k, v]) => `<span class="tag">${esc(k.slice(id.length))}: ${esc(v)}</span>`).join(' ');
+    return `<details class="card"><summary><b>${esc(n.name)}</b> <span class="muted small">${esc(n.role || '')}</span></summary>
+      <div class="small" style="margin-top:8px">${esc(st)}${n.san != null ? ` · 이성 ${n.san}` : ''}${n.hp ? ` · 체력 ${n.hp}` : ''}${n.db ? ` · 피해 보너스 ${esc(n.db)}` : ''}${n.dodge ? ` · 회피 ${n.dodge}` : ''}</div>
+      ${n.secret ? `<div class="small bad" style="margin-top:6px">비밀: ${esc(n.secret)}</div>` : ''}
+      ${(n.tactics || n.notes || []).map((t) => `<div class="small muted">· ${esc(t)}</div>`).join('')}
+      <div class="row" style="margin-top:8px">${atk}${sk}</div>${rolls ? `<div style="margin-top:6px">${rolls}</div>` : ''}
+    </details>`;
+  }
+  function viewParty() {
+    const bs = scn?.backstories || [];
+    return invList().map((i) => `<div class="inv">
+      <div class="row" style="justify-content:space-between"><span style="font-size:16px">${esc(i.label ? i.label + ' · ' : '')}${esc(i.name)}</span><span class="small ${/홀림|광기|중상|빈사|사망|의식/.test(i.state || '') ? 'bad' : 'muted'}">${esc(i.state || '정상')}</span></div>
+      <div class="small muted">${esc(i.occupation || '')} · ${i.age || ''}세 · 하루 이성 손실 ${i.lostToday || 0}/${Math.max(1, Math.floor((i.dayStartSan ?? i.san) / 5))}${i.majorWound ? ' · <span class="bad">중상</span>' : ''}</div>
+      <div class="stats4" style="margin-top:6px">
+        ${[['hp', '체력', `${i.hp}/${i.hpMax}`], ['san', '이성', i.san], ['mp', '마력', i.mp], ['luck', '운', i.luck]].map(([k, ko, v]) => `<div><div>${ko} <b class="${k === 'san' ? 'ok' : ''}">${v}</b></div><div class="adj"><button data-act="adj" data-pid="${i.pid}" data-k="${k}" data-v="-1" aria-label="${ko} 1 빼기">−</button><button data-act="adj" data-pid="${i.pid}" data-k="${k}" data-v="1" aria-label="${ko} 1 더하기">+</button></div></div>`).join('')}
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="small" data-act="dmg" data-pid="${i.pid}">피해</button>
+        <button class="small" data-act="stateMemo" data-pid="${i.pid}">상태</button>
+        ${bs.length ? `<select id="bs-${i.pid}" class="small" aria-label="백스토리">${bs.map((b) => `<option value="${b.id}">${esc(b.label)}</option>`).join('')}</select><button class="small" data-act="backstory" data-pid="${i.pid}">백스토리 보내기</button>` : ''}
+        <button class="small" data-act="kick" data-pid="${i.pid}" aria-label="탐사자 지우기">지우기</button>
+      </div>
+    </div>`).join('') || '<p class="muted small">아직 들어온 탐사자가 없습니다. 위의 탐사자 주소를 보내 주세요.</p>';
+  }
+  function viewLog() {
+    return `<div class="log">${sortByAt(room.log).slice(-40).reverse().map((l) => `<div><span class="n ${l.event ? 'gold' : l.success ? 'ok' : 'bad'}">${l.roll ?? '·'}</span> ${esc(l.name || '')} · ${esc(l.title)} ${l.levelKo ? `— ${esc(l.levelKo)}` : ''}${l.detail ? ` <span class="muted small">${esc(l.detail)}</span>` : ''}</div>`).join('')}</div>`;
+  }
+
+  renderFn = () => {
+    const s = scene();
+    const openReq = sortByAt(room.req).filter((r) => { const tos = r.to === 'all' ? invList().map((i) => i.pid) : [r.to]; return tos.some((p) => !(r.done && r.done[p])); });
+    $app.innerHTML = `
+    <header class="k-head">
+      <div class="row" style="gap:12px;align-items:baseline"><span class="title" style="font-size:28px">${esc(scn?.meta.title || '시나리오 없음')}</span><span style="font-family:var(--fell);font-style:italic;color:var(--muted)">${esc(scn?.meta.titleHanja || '')} · Keeper</span></div>
+      <div class="row"><span class="tag">방 ${ROOM}${LOCAL ? ' · 로컬' : ''}</span>${s ? `<span class="tag red">${esc(s.title)}</span>` : ''}${room.clock ? `<span class="tag red" data-clock>${esc(clockText())}</span>` : ''}</div>
+      <div style="flex:1 1 auto"></div>
+      <div class="row">
+        <button data-act="copy" data-v="${esc(fullLink('player'))}">탐사자 주소 복사</button>
+        <button data-act="copy" data-v="${esc(fullLink('table'))}">테이블 주소 복사</button>
+        <button data-act="load">${scn ? '시나리오 다시 불러오기' : '시나리오 폴더 불러오기'}</button>
+        <input type="file" id="scnFiles" webkitdirectory multiple class="hidden" data-change="filesPicked">
+        <input type="file" id="scnFile" accept=".json" class="hidden" data-change="filesPicked">
+        <button class="small" data-act="loadOne">json 하나만</button>
+      </div>
+    </header>
+    ${!scn ? `<div class="lobby"><div class="paper"><p>시나리오 폴더(scenario.json, keeper.md, handouts 폴더가 있는 곳)를 불러오면 진행 화면이 열립니다.\n불러온 시나리오는 이 브라우저에만 저장되고, 탐사자에게는 수호자가 공개한 것만 보입니다.</p></div><button class="primary" data-act="load">시나리오 폴더 불러오기</button></div>` : `
+    <div class="k-body">
+      <nav class="k-nav" aria-label="장면 목록">
+        ${['day1', 'night1', 'day2', 'night2', 'any', 'ending'].map((act) => {
+          const list = scn.scenes.filter((x) => (x.act || 'any') === act); if (!list.length) return '';
+          const ko = { day1: '첫날', night1: '첫날 밤', day2: '둘째 날', night2: '둘째 날 밤', any: '언제든', ending: '결말' }[act];
+          return `<div class="label act">${ko}</div>${list.map((x) => `<button class="${x.id === ks.scene ? 'on' : ''}" data-act="scene" data-id="${x.id}">${ks.entered[x.id] ? '' : '· '}${esc(x.title)}</button>`).join('')}`;
+        }).join('')}
+      </nav>
+      <main class="k-main">
+        ${s ? `
+        <div><div class="label">Scene · ${esc(s.act || '')}</div><h1 class="title" style="margin:2px 0 0;font-size:36px;line-height:1.2">${esc(s.title)}</h1></div>
+        <section class="card stack" aria-label="AI 키퍼">
+          <div class="row" style="justify-content:space-between"><span class="label">AI keeper · 보조 수호자 (Gemini)</span><span class="row"><span class="tag">${ks.aiCfg.mode === 'manual' ? '복사·붙여넣기' : esc(ks.aiCfg.model)}</span><button class="small" data-act="aiToggle" data-k="aiSettings">설정</button><button class="small" data-act="aiToggle" data-k="aiOpen">${ks.aiOpen ? '접기' : '펼치기'}</button></span></div>
+          ${ks.aiSettings ? `<div class="row">
+            <label>방식<select data-change="aiCfg" data-k="mode"><option value="firebase" ${ks.aiCfg.mode === 'firebase' ? 'selected' : ''}>Firebase AI Logic (자동)</option><option value="manual" ${ks.aiCfg.mode === 'manual' ? 'selected' : ''}>복사·붙여넣기 (Gemini 웹)</option></select></label>
+            <label>모델<input value="${esc(ks.aiCfg.model)}" data-change="aiCfg" data-k="model" style="width:180px"></label>
+            <label>reCAPTCHA 사이트 키<input value="${esc(ks.aiCfg.siteKey)}" data-change="aiCfg" data-k="siteKey" style="width:260px" placeholder="App Check용"></label>
+            <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text2)"><input type="checkbox" data-change="aiCfg" data-k="debug" ${ks.aiCfg.debug ? 'checked' : ''}> App Check 디버그 모드 (내 컴퓨터 시험용)</label>
+          </div>` : ''}
+          ${ks.aiOpen ? `
+          <label>지금 상황 덧붙이기 (비워 두면 탐사자들의 최근 말과 굴림만 보냄)<textarea id="aiActions" rows="2" placeholder="예: 도윤이 장롱 문을 열어 보겠다고 함"></textarea></label>
+          <div class="row">
+            <button class="primary" data-act="aiAsk" data-task="respond" ${aiBusy ? 'disabled' : ''}>${aiBusy ? '생각하는 중…' : '행동에 응답'}</button>
+            <button data-act="aiAsk" data-task="open" ${aiBusy ? 'disabled' : ''}>장면 도입 묘사</button>
+            <button data-act="aiAsk" data-task="result" ${aiBusy ? 'disabled' : ''}>최근 판정 풀어 말하기</button>
+            <button data-act="aiAsk" data-task="next" ${aiBusy ? 'disabled' : ''}>막혔을 때 다음 제안</button>
+          </div>
+          ${aiErr ? `<div class="small bad">${esc(aiErr)}</div>` : ''}
+          ${ks.aiCfg.mode === 'manual' ? `<label>Gemini 답 붙여 넣기<textarea id="aiPasteBox" rows="3" placeholder="Gemini가 준 JSON(또는 글)을 붙여 넣으세요"></textarea></label><div class="row"><button data-act="aiPaste">답 적용</button>${aiRes && aiRes.manual ? '<span class="small muted">복사한 글을 gemini.google.com 대화창에 붙여 넣으세요.</span>' : ''}</div>` : ''}
+          ${aiRes && !aiRes.manual ? `
+            <label>묘사 (고쳐서 보내도 됩니다)<textarea id="aiNarr" rows="4" style="font-family:var(--hand);font-size:16px">${esc(aiRes.narration)}</textarea></label>
+            <div class="row"><button class="primary" data-act="aiSendNarr">테이블에 보내기</button></div>
+            ${aiRes.npcLines.map((l, i) => `<div class="row"><span class="small"><b>${esc(((scn.npcs.find((n) => n.id === l.npc) || {}).name || l.npc).split(' (')[0])}</b>: “${esc(l.line)}”</span><button class="small" data-act="aiSendNpc" data-i="${i}">대사 보내기</button></div>`).join('')}
+            ${aiRes.keeperNote ? `<div class="keeper small">${esc(aiRes.keeperNote)}</div>` : ''}
+            ${aiRes.suggestions.length ? `<div class="label">제안 — 눌러야 실행됩니다</div><div class="stack">${aiRes.suggestions.map((g, i) => `<div class="row"><button class="small" data-act="aiSug" data-i="${i}" ${aiRes.done[i] ? 'disabled' : ''}>${aiRes.done[i] ? '실행함 · ' : ''}${esc({ check: `판정: ${g.skill || g.checkId}${g.difficulty && g.difficulty !== 'regular' ? ` (${g.difficulty === 'hard' ? '어려움' : '극단적'})` : ''}`, sanity: `이성 ${g.loss || g.sanId}`, reveal: `핸드아웃 공개 ${g.handout}`, flag: `진행 표시 ${g.flag}`, scene: `장면 이동 ${g.to}` }[g.type] || g.type)}${g.to && g.to !== 'all' && room.inv[g.to] ? ` → ${esc(room.inv[g.to].name)}` : ''}</button><span class="small muted">${esc(g.reason || '')}</span></div>`).join('')}</div>` : ''}
+          ` : ''}` : ''}
+        </section>
+        ${s.read ? `<section class="paper" aria-label="읽어 줄 묘사"><div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="mono small muted">READ ALOUD · 탐사자에게 읽어 줄 묘사</span><button class="small primary" data-act="sendRead">테이블에 보내기</button></div><p>${esc(s.read)}</p></section>` : ''}
+        ${s.keeper ? `<section class="keeper"><div class="label">Keeper only · 수호자 메모</div><ul>${s.keeper.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></section>` : ''}
+        ${(s.checks || []).length ? `<section class="stack"><div class="label">Checks · 판정</div>${s.checks.map(viewCheck).join('')}</section>` : ''}
+        ${(s.sanity || []).length ? `<section class="stack"><div class="label">Sanity · 이성</div>${s.sanity.map(viewSan).join('')}</section>` : ''}
+        ${(s.clues || []).length ? `<section class="stack"><div class="label">Clues · 단서</div>${s.clues.map((c) => `<div class="check"><div class="what">${esc(c.text)}${c.keeper ? `<div class="small bad">${esc(c.keeper)}</div>` : ''}${c.by ? `<div class="small muted">판정 ${esc(c.by)} 성공 시</div>` : ''}</div>${c.handout ? `<button class="small" data-act="reveal" data-id="${c.handout}">${esc(c.handout)} 공개</button>` : `<button class="small" data-act="sendText" data-id="${c.id}">테이블에 보내기</button>`}</div>`).join('')}</section>` : ''}
+        ${(s.handouts || []).length ? `<section class="row">${s.handouts.map((id) => { const h = scn.handouts.find((x) => x.id === id); const on = room.handouts && room.handouts[id]; return `<button ${on ? '' : 'class="primary"'} data-act="${on ? 'hide' : 'reveal'}" data-id="${id}">${on ? '공개 취소: ' : '공개: '}${esc(h.title)}</button>`; }).join('')}</section>` : ''}
+        ${(s.npcs || []).length ? `<section class="stack"><div class="label">NPC</div>${s.npcs.map(viewNpc).join('')}</section>` : ''}
+        <section class="stack"><div class="label">Exits · 다음 장면</div><div class="row">${(s.exits || []).map((x) => `<button data-act="scene" data-id="${x.to}" ${x.if && !condOk(x.if) ? 'title="조건 미충족"' : ''}>${esc(x.label)}${x.if && !condOk(x.if) ? ' (조건 미충족)' : ''}</button>`).join('') || '<span class="muted small">끝</span>'}${(scn.clocks || []).map((c) => `<button data-act="clock" data-id="${c.id}">${esc(c.label)} 시작</button>`).join('')}${room.clock ? '<button data-act="clockStop">시간 제한 멈춤</button>' : ''}</div></section>
+        <section class="card stack"><div class="label">Free check · 자유 판정 요청</div>
+          <div class="row"><label>기능·특성치<input id="fSkill" placeholder="예: 관찰력, 근력, 운"></label>
+          <label>난이도<select id="fDiff"><option value="regular">보통</option><option value="hard">어려움</option><option value="extreme">극단적</option></select></label>
+          <label>보너스<input id="fB" type="number" min="0" max="2" value="0" style="width:64px"></label><label>페널티<input id="fP" type="number" min="0" max="3" value="0" style="width:64px"></label>
+          <label>대항 수치<input id="fOpp" type="number" placeholder="없음" style="width:90px"></label>
+          <label>대상<select id="fTo"><option value="all">전원</option>${invList().map((i) => `<option value="${i.pid}">${esc(i.name)}</option>`).join('')}</select></label></div>
+          <div class="row"><button data-act="free">판정 요청</button><label style="flex-direction:row;align-items:center">이성 손실<input id="fLoss" placeholder="0/1D4" style="width:90px"></label><button data-act="freeSan">이성 판정 요청</button></div>
+        </section>
+        <section class="stack"><button class="small" data-act="toggleMd">${ks.showKeeperMd ? '수호자 안내 닫기' : '수호자 안내(keeper.md) 보기'}</button>${ks.showKeeperMd ? `<pre class="keeper" style="white-space:pre-wrap;font-family:var(--serif)">${esc(keeperMd)}</pre>` : ''}</section>
+        ` : ''}
+      </main>
+      <aside class="k-side">
+        <div class="row"><button class="small ${ks.panel === 'party' ? 'primary' : ''}" data-act="panel" data-p="party">탐사자</button><button class="small ${ks.panel === 'flags' ? 'primary' : ''}" data-act="panel" data-p="flags">진행 표시</button><button class="small ${ks.panel === 'items' ? 'primary' : ''}" data-act="panel" data-p="items">물건·핸드아웃</button></div>
+        ${ks.panel === 'party' ? `<div class="stack">${viewParty()}</div><button class="small" data-act="newDay">하루 넘기기 (하루 이성 손실 초기화)</button>` : ''}
+        ${ks.panel === 'flags' ? `<div class="flags">${(scn.flags || []).map((f) => `<label><input type="checkbox" data-change="flag" data-id="${f.id}" ${flagOn(f.id) ? 'checked' : ''}> ${esc(f.label)}</label>`).join('')}</div>` : ''}
+        ${ks.panel === 'items' ? `<div class="stack small">${(scn.items || []).map((it) => `<div><b class="${ks.items[it.id] ? 'ok' : ''}">${ks.items[it.id] ? '획득 · ' : ''}${esc(it.name)}</b><div class="muted">${esc(it.player || '')}</div>${it.secret ? `<div class="bad">${esc(it.secret)}</div>` : ''}</div>`).join('')}<div class="label">핸드아웃</div>${(scn.handouts || []).map((h) => `<div class="row" style="justify-content:space-between"><span>${esc(h.title)}</span><button class="small" data-act="${room.handouts && room.handouts[h.id] ? 'hide' : 'reveal'}" data-id="${h.id}">${room.handouts && room.handouts[h.id] ? '공개 취소' : '공개'}</button></div>`).join('')}</div>` : ''}
+        <div class="label">Table talk · 탐사자들의 말</div>
+        <div class="log" style="max-height:220px">${sortByAt(room.chat).slice(-15).map((c) => `<div><b>${esc(c.name)}</b> <span class="muted small">${new Date(c.at).toLocaleTimeString().slice(0, -3)}</span><div>${esc(c.text)}</div></div>`).join('') || '<span class="muted small">아직 없음</span>'}</div>
+        <div class="label">Waiting · 대기 중인 요청 ${openReq.length}</div>
+        <div class="stack small">${openReq.map((r) => `<div class="row" style="justify-content:space-between"><span>${esc(r.title)} <span class="muted">→ ${r.to === 'all' ? '전원' : esc(room.inv[r.to]?.name || '?')}</span></span><button class="small" data-act="cancelReq" data-id="${r.id}">취소</button></div>`).join('') || '<span class="muted">없음</span>'}</div>
+        <div class="row" style="justify-content:space-between"><span class="label">Roll log · 굴림 기록</span><button class="small" data-act="exportLog">저장</button></div>
+        ${viewLog()}
+      </aside>
+    </div>`}`;
+  };
+
+  net = connect(ROOM, { local: LOCAL });
+  subscribe();
+  render();
+}
+
+// ═════════ 탐사자 ═════════
+function player() {
+  const PK = `coc-pid-${ROOM}`;
+  let pid = q.get('pid') || localStorage.getItem(PK);
+  if (!pid) { pid = newKey(); localStorage.setItem(PK, pid); }
+  const ui = { tab: 'roll', draft: null, social: {}, lastLog: null, filter: '' };
+  const me = () => room.inv[pid];
+
+  function newDraft() {
+    const ch = Object.fromEntries(RULES.characteristics.map((c) => [c.key, 50]));
+    return { name: '', occupation: '', age: 25, ch, luck: 50, skills: E.baseSkills(RULES, ch), edited: {} };
+  }
+  function rollDraft(d) {
+    d.ch = E.rollCharacteristics(RULES); d.luck = E.rollLuck(RULES, d.age);
+    const base = E.baseSkills(RULES, d.ch);
+    for (const k of Object.keys(base)) if (!d.edited[k]) d.skills[k] = base[k];
+  }
+  function syncBase(d) {
+    const base = E.baseSkills(RULES, d.ch);
+    for (const k of Object.keys(base)) if (!d.edited[k]) d.skills[k] = base[k];
+  }
+  async function saveDraft(d) {
+    if (!d.name.trim()) return toast('이름을 넣어 주세요.');
+    const dv = E.derived(RULES, d.ch, { age: d.age, cthulhuMythos: d.skills['크툴루 신화'] || 0 });
+    await net.set(`inv/${pid}`, {
+      at: now(), name: d.name.trim(), occupation: d.occupation.trim(), age: d.age, ch: d.ch, skills: d.skills,
+      hpMax: dv.hpMax, hp: dv.hpMax, mpMax: dv.mpMax, mp: dv.mpMax, san: dv.san, sanMax: dv.sanMax, luck: d.luck,
+      db: dv.db, build: dv.build, mov: dv.mov, dayStartSan: dv.san, lostToday: 0, state: '정상', marks: {},
+    });
+    ui.draft = null; render();
+  }
+
+  async function doRoll(r, opts = {}) {
+    const inv = me();
+    let skill = r.skill;
+    if (skill === '대인관계') skill = ui.social[r.id] || SOCIAL.reduce((a, b) => ((targetFor(inv, b) || 0) > (targetFor(inv, a) || 0) ? b : a));
+    let target = targetFor(inv, skill);
+    if (target == null) {
+      const v = parseInt(prompt(`${skill} 값이 시트에 없습니다. 값을 넣어 주세요.`, '0'), 10);
+      if (isNaN(v)) return; target = v;
+    }
+    const kind = r.kind || kindOf(skill);
+    const res = E.check({ target, difficulty: r.difficulty || 'regular', bonus: r.bonus || 0, penalty: r.penalty || 0, kind, pushed: !!opts.pushed });
+    const entry = { at: now(), pid, name: inv.name, reqId: r.id, checkId: r.checkId || null, title: `${skill}${r.difficulty === 'hard' ? ' (어려움)' : r.difficulty === 'extreme' ? ' (극단적)' : ''}${opts.pushed ? ' · 강행' : ''}`, skill, kind, target, required: res.required, roll: res.roll, tens: res.dice.tens || [], units: res.dice.units ?? null, level: res.level, levelKo: res.levelKo, success: res.success, pushed: !!opts.pushed, difficulty: res.difficulty, bonus: r.bonus || 0, penalty: r.penalty || 0, canPush: res.canPush && !r.opposed };
+
+    if (r.opposed) {
+      const o = E.check({ target: r.opposed.value, kind });
+      const cmp = E.opposed({ ...res, success: res.success }, o);
+      entry.opp = { label: r.opposed.label, value: r.opposed.value, roll: o.roll, levelKo: o.levelKo };
+      entry.success = cmp.winner === 'a';
+      entry.detail = `${r.opposed.label} ${o.roll} ${o.levelKo} → ${entry.success ? '이김' : cmp.winner ? '짐' : '교착'}`;
+    }
+    if (kind === 'sanity') {
+      const lossParts = E.parseSanLoss(r.loss.includes('/') ? r.loss : `${r.loss}/${r.loss}`);
+      let loss = 0;
+      if (!r.loss.includes('/')) { loss = E.rollExpr(r.loss).total; entry.detail = '판정 없이 잃음'; entry.roll = null; entry.levelKo = ''; entry.success = false; }
+      else if (res.success) loss = E.rollExpr(lossParts.onSuccess).total;
+      else if (res.level === 'fumble') loss = E.rollExpr(lossParts.onFail, { maxRoll: true }).total;
+      else loss = E.rollExpr(lossParts.onFail).total;
+      const ap = E.applySanLoss({ san: inv.san, dayStartSan: inv.dayStartSan ?? inv.san, lostToday: inv.lostToday || 0, insanity: inv.insanity || null }, loss);
+      entry.loss = loss; entry.effects = ap.effects;
+      entry.title = `이성 ${r.loss}`;
+      entry.detail = `${entry.detail ? entry.detail + ' · ' : ''}이성 ${loss} 잃음 (${inv.san}→${ap.state.san})${ap.effects.includes('needIntRoll') ? ' · 지능 판정 필요' : ''}${ap.effects.includes('indefinite') ? ' · 장기적 광기' : ''}${ap.effects.includes('permanent') ? ' · 영구적 광기' : ''}${ap.effects.includes('boutWhileInsane') ? ' · 광기 발작' : ''}`;
+      const upd = { san: ap.state.san, lostToday: ap.state.lostToday, dayStartSan: ap.state.dayStartSan };
+      if (ap.effects.includes('indefinite')) { upd.insanity = 'indefinite'; upd.state = '장기적 광기'; }
+      if (ap.effects.includes('permanent')) { upd.insanity = 'permanent'; upd.state = '영구적 광기'; }
+      if (ap.effects.includes('needIntRoll')) upd.needInt = true;
+      await net.update(`inv/${pid}`, upd);
+    }
+    if (entry.success && kind === 'skill' && !(r.bonus > 0) && !r.opposed && skill !== '크툴루 신화') await net.set(`inv/${pid}/marks/${skill}`, true);
+    const lid = await net.push('log', entry);
+    ui.lastLog = lid;
+    if (r.id && !opts.free) await net.set(`req/${r.id}/done/${pid}`, lid);
+    render();
+  }
+  async function intRoll() {
+    const inv = me();
+    const res = E.check({ target: inv.ch.INT, kind: 'characteristic' });
+    const t = E.resolveTemporaryInsanity(res);
+    await net.update(`inv/${pid}`, { needInt: null, ...(t.insane ? { insanity: inv.insanity || 'temporary', state: inv.insanity === 'indefinite' ? '장기적 광기' : '일시적 광기' } : {}) });
+    const lid = await net.push('log', { at: now(), pid, name: inv.name, title: '지능 — 이성 5 이상 잃음', roll: res.roll, level: res.level, levelKo: res.levelKo, success: res.success, detail: t.insane ? '일시적 광기 · 광기의 발작' : '기억을 억누르고 광기를 면함' });
+    ui.lastLog = lid; render();
+  }
+
+  actions.tab = (d) => { ui.tab = d.t; render(); };
+  actions.say = async () => { const el = document.getElementById('chatText'); const t = el.value.trim(); if (!t) return; el.value = ''; await net.push('chat', { at: now(), pid, name: me().name, text: t.slice(0, 600) }); };
+  actions.roll = (d) => { const r = { id: d.id, ...room.req[d.id] }; doRoll(r); };
+  actions.social = (d, el) => { ui.social[d.id] = el.value; };
+  actions.push = (d) => { const l = room.log[d.lid]; const r = room.req[l.reqId] ? { id: l.reqId, ...room.req[l.reqId] } : { skill: l.skill, kind: l.kind, difficulty: 'regular', bonus: l.bonus, penalty: l.penalty, checkId: l.checkId }; doRoll(r, { pushed: true, free: !room.req[l.reqId] }); };
+  actions.luck = async (d) => {
+    const l = room.log[d.lid]; const inv = me(); const cost = Number(d.cost);
+    const res = E.spendLuck({ ...l, difficulty: l.difficulty || 'regular' }, cost);
+    await net.update(`log/${d.lid}`, { roll: res.roll, level: res.level, levelKo: res.levelKo, success: res.success, luckSpent: cost, canPush: false, detail: `운 ${cost} 사용` });
+    await net.set(`inv/${pid}/luck`, inv.luck - cost);
+  };
+  actions.intRoll = () => intRoll();
+  actions.selfRoll = () => { const s = document.getElementById('selfSkill').value; if (s) doRoll({ skill: s, kind: kindOf(s), difficulty: document.getElementById('selfDiff').value }, { free: true }); };
+  actions.draftNew = () => { ui.draft = newDraft(); render(); };
+  actions.draftRoll = () => { rollDraft(ui.draft); render(); };
+  actions.draftQuick = () => {
+    const d = ui.draft; rollDraft(d);
+    const names = ['한도윤', '이서현', '박정우', '최유나', '정하늘', '윤재민']; const jobs = ['사진작가', '민속학 대학원생', '기자', '간호사', '고등학교 교사', '택시 기사'];
+    d.name = d.name || names[Math.floor(Math.random() * names.length)]; d.occupation = d.occupation || jobs[Math.floor(Math.random() * jobs.length)];
+    for (const [k, v] of [['관찰력', 60], ['자료 조사', 55], ['듣기', 50], ['심리학', 45], ['설득', 40], ['근접전 (격투)', 45], ['자동차 운전', 40], ['응급처치', 45]]) { d.skills[k] = Math.max(d.skills[k], v); d.edited[k] = true; }
+    render();
+  };
+  actions.draftSave = () => saveDraft(ui.draft);
+  actions.draftField = (d, el) => {
+    const dr = ui.draft;
+    if (d.f === 'ch') { dr.ch[d.k] = Math.max(0, parseInt(el.value, 10) || 0); syncBase(dr); }
+    else if (d.f === 'skill') { dr.skills[d.k] = Math.max(0, parseInt(el.value, 10) || 0); dr.edited[d.k] = true; }
+    else if (d.f === 'age' || d.f === 'luck') dr[d.f] = parseInt(el.value, 10) || 0;
+    else dr[d.f] = el.value;
+    render();
+  };
+  actions.sheetSkill = (d, el) => net.set(`inv/${pid}/skills/${d.k}`, Math.max(0, parseInt(el.value, 10) || 0));
+  actions.improve = async () => {
+    const inv = me(); const out = []; let sanGain = 0;
+    for (const k of Object.keys(inv.marks || {})) {
+      const r = E.improveSkill(inv.skills[k] || 0);
+      if (r.improved) { await net.set(`inv/${pid}/skills/${k}`, r.value); out.push(`${k} +${r.gain}`); if (r.crossed90) sanGain += E.rollExpr('2D6').total; }
+    }
+    await net.set(`inv/${pid}/marks`, {});
+    if (sanGain) await net.set(`inv/${pid}/san`, Math.min(inv.sanMax, inv.san + sanGain));
+    await net.push('log', { at: now(), pid, name: inv.name, title: '성장 판정', event: true, detail: out.join(', ') || '오른 기능 없음' });
+    toast(out.length ? `성장: ${out.join(', ')}` : '이번에는 오른 기능이 없습니다.');
+  };
+  actions.filter = (d, el) => { ui.filter = el.value; render(); };
+
+  function diceView(l) {
+    if (!l || l.roll == null) return '';
+    const tens = l.tens && l.tens.length ? l.tens : [Math.floor((l.roll % 100) / 10) * 10];
+    const chosen = l.roll === 100 ? 0 : Math.floor(l.roll / 10) * 10;
+    let used = false;
+    return `<div class="dice" aria-hidden="true">${tens.map((t) => { const on = !used && t === chosen; if (on) used = true; return `<span class="${on || tens.length === 1 ? '' : 'drop'}">${String(t).padStart(2, '0')}</span>`; }).join('')}<span>${l.units ?? l.roll % 10}</span></div>`;
+  }
+  function viewResult(l, lid) {
+    const inv = me();
+    const luckOpts = !l.pushed && !l.luckSpent && !l.success && ['skill', 'characteristic'].includes(l.kind) && !l.opp ? E.luckSpendOptions({ ...l, kind: l.kind }, inv.luck) : [];
+    return `<section class="card" aria-label="결과">
+      <div class="row" style="gap:14px">${diceView(l)}
+        <div><div style="font-size:17px">${l.roll ?? ''} · <span class="${l.success ? 'ok' : 'bad'}">${esc(l.levelKo || '')}${l.opp ? (l.success ? ' · 대항 승리' : ' · 대항 패배') : ''}</span></div>
+        <div class="small muted">${esc(l.title)} · 기준 ${l.required ?? ''}${l.detail ? ` · ${esc(l.detail)}` : ''}</div></div></div>
+      ${(l.canPush && !l.success) || luckOpts.length ? `<div class="row" style="margin-top:10px">
+        ${l.canPush && !l.success ? `<button data-act="push" data-lid="${lid}">강행 판정 (실패하면 큰 대가)</button>` : ''}
+        ${luckOpts.map((o) => `<button class="small" data-act="luck" data-lid="${lid}" data-cost="${o.cost}">운 ${o.cost} 써서 ${esc(o.levelKo)}</button>`).join('')}
+      </div>` : ''}
+    </section>`;
+  }
+
+  function viewCreate() {
+    const d = ui.draft;
+    const dv = E.derived(RULES, d.ch, { age: d.age });
+    const base = E.baseSkills(RULES, d.ch);
+    const spent = Object.keys(d.skills).reduce((a, k) => a + Math.max(0, d.skills[k] - (base[k] || 0)), 0);
+    const band = E.ageBand(RULES, d.age);
+    const list = Object.keys(d.skills).filter((k) => !ui.filter || k.includes(ui.filter));
+    return `<div class="p-body">
+      <div><div class="label">New investigator · 탐사자 만들기</div><h1 class="title" style="margin:2px 0;font-size:30px">${esc(room.meta?.scenarioTitle || '')} 탐사자</h1></div>
+      <div class="row"><button data-act="draftRoll">특성치 굴리기</button><button data-act="draftQuick">빠른 생성</button></div>
+      <div class="chgrid"><label>이름<input value="${esc(d.name)}" data-change="draftField" data-f="name"></label><label>직업<input value="${esc(d.occupation)}" data-change="draftField" data-f="occupation"></label><label>나이<input type="number" min="15" max="89" value="${d.age}" data-change="draftField" data-f="age"></label><label>운<input type="number" value="${d.luck}" data-change="draftField" data-f="luck"></label></div>
+      <div class="chgrid">${RULES.characteristics.map((c) => `<label>${c.ko}<input type="number" step="5" value="${d.ch[c.key]}" data-change="draftField" data-f="ch" data-k="${c.key}"></label>`).join('')}</div>
+      <div class="card small">체력 ${dv.hpMax} · 마력 ${dv.mpMax} · 이성 ${dv.san} · 피해 보너스 ${dv.db} · 체구 ${dv.build} · 이동력 ${dv.mov}
+        ${band && (band.reduce || band.APP || band.EDU) ? `<div class="muted">나이 보정: ${band.reduce ? `${band.reduceFrom.map((k) => CH_KO[k]).join('·')}에서 총 ${band.reduce} 빼기 ` : ''}${band.EDU ? `교육 ${band.EDU} ` : ''}${band.APP ? `외모 ${band.APP} ` : ''}${band.eduImprove ? `교육 향상 판정 ${band.eduImprove}회` : ''} — 직접 고쳐 넣으세요.</div>` : ''}</div>
+      <div class="card small">기능 점수: 직업 기능 <b>${d.ch.EDU * 4}</b>(교육×4, 직업에 따라 다름) + 관심 기능 <b>${d.ch.INT * 2}</b>(지능×2) = ${d.ch.EDU * 4 + d.ch.INT * 2} · 지금 쓴 점수 <b class="${spent > d.ch.EDU * 4 + d.ch.INT * 2 ? 'bad' : 'ok'}">${spent}</b></div>
+      <label>기능 찾기<input value="${esc(ui.filter)}" data-change="filter" placeholder="예: 관찰"></label>
+      <div class="skills wide">${list.map((k) => `<span>${esc(k)} <span class="muted small">${base[k]}</span></span><input type="number" value="${d.skills[k]}" data-change="draftField" data-f="skill" data-k="${esc(k)}" aria-label="${esc(k)}">`).join('')}</div>
+      <button class="primary" data-act="draftSave">이 탐사자로 들어가기</button>
+    </div>`;
+  }
+
+  renderFn = () => {
+    const inv = me();
+    if (!inv) {
+      if (!ui.draft) ui.draft = newDraft();
+      $app.innerHTML = `<div class="p-wrap create">${viewCreate()}</div>`;
+      return;
+    }
+    const mine = sortByAt(room.req).filter((r) => (r.to === 'all' || r.to === pid) && !(r.done && r.done[pid]));
+    const myLogs = sortByAt(room.log).filter((l) => l.pid === pid);
+    const lastId = ui.lastLog && room.log[ui.lastLog] ? ui.lastLog : myLogs.length ? myLogs[myLogs.length - 1].id : null;
+    const hos = sortByAt(room.handouts);
+    $app.innerHTML = `<div class="p-wrap" data-tab="${ui.tab}">
+      <header class="p-head">
+        <div class="mono small muted">${esc(inv.label || 'INVESTIGATOR')} · ${esc(room.meta?.scenarioTitle || '')} · ${esc(room.meta?.scene || '')} <span data-clock>${esc(clockText())}</span></div>
+        <div class="row" style="justify-content:space-between;align-items:baseline"><span class="title" style="font-size:26px">${esc(inv.name)}</span><span class="small muted">${esc(inv.occupation || '')} · ${inv.age}세</span></div>
+        <div class="p-stats">
+          <div><div class="small muted">체력</div><div class="v">${inv.hp}<span class="small muted">/${inv.hpMax}</span></div></div>
+          <div style="border-color:var(--sanLine)"><div class="small muted">이성</div><div class="v ok">${inv.san}<span class="small muted">/${inv.sanMax}</span></div></div>
+          <div><div class="small muted">마력</div><div class="v">${inv.mp}</div></div>
+          <div><div class="small muted">운</div><div class="v">${inv.luck}</div></div>
+        </div>
+      </header>
+      <div class="p-body">
+      <div class="pane pane-roll"><div class="label pane-title">Checks · 판정</div>
+        ${inv.needInt ? `<section class="card blood"><div class="label" style="color:var(--bloodText)">이성을 5 이상 잃었습니다</div><p class="small" style="margin:4px 0 10px">지능 판정에 성공하면 본 것을 온전히 이해해 일시적 광기에 빠집니다. 실패하면 기억을 억눌러 광기를 면합니다.</p><button class="primary" data-act="intRoll">지능 판정</button></section>` : ''}
+        ${mine.map((r) => `<section class="card blood" aria-label="판정 요청">
+          <div class="label" style="color:var(--bloodText)">Keeper requests · 판정 요청</div>
+          <div style="font-size:18px;margin-top:2px">${esc(r.title)}</div>
+          ${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ''}
+          ${r.skill === '대인관계' ? `<label style="margin-top:6px">어떤 기능으로?<select data-change="social" data-id="${r.id}">${SOCIAL.map((s) => `<option ${ui.social[r.id] === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>` : ''}
+          <div class="row" style="justify-content:space-between;margin-top:10px">
+            <span class="mono small">${esc(r.skill === '대인관계' ? '' : r.skill)} ${r.skill === '대인관계' ? '' : targetFor(inv, r.skill) ?? '?'}${r.difficulty === 'hard' ? ' · 어려움' : r.difficulty === 'extreme' ? ' · 극단적' : ''}${r.bonus ? ` · 보너스 ${r.bonus}` : ''}${r.penalty ? ` · 페널티 ${r.penalty}` : ''}${r.opposed ? ` · vs ${r.opposed.value}` : ''}</span>
+            <button class="primary" data-act="roll" data-id="${r.id}" style="min-height:48px;font-size:16px">주사위 굴리기</button>
+          </div></section>`).join('')}
+        ${lastId ? viewResult(room.log[lastId], lastId) : ''}
+        ${inv.backstory ? `<section class="paper"><div class="mono small muted">BACKSTORY · ${esc(inv.label || '')}</div><p style="font-size:15px">${esc(inv.backstory)}</p></section>` : ''}
+        <section class="card"><div class="label">Condition · 지금 상태</div><div>${esc(inv.state || '정상')}${inv.majorWound ? ' · 중상' : ''}</div><div class="small muted">오늘 잃은 이성 ${inv.lostToday || 0}</div></section>
+        <section class="card stack"><div class="label">Say & do · 행동·말하기</div>
+          <textarea id="chatText" rows="2" placeholder="예: 장롱 문을 천천히 열어 봅니다. / &quot;누구세요?&quot;"></textarea>
+          <div class="row"><button class="primary" data-act="say">보내기</button><span class="small muted">수호자에게 보입니다</span></div>
+          <div class="log" style="max-height:200px">${sortByAt(room.chat).slice(-8).map((c) => `<div><b class="${c.pid === pid ? 'gold' : ''}">${esc(c.name)}</b> ${esc(c.text)}</div>`).join('')}</div>
+        </section>
+        <section class="card stack"><div class="label">Self roll · 스스로 굴리기</div><div class="row"><select id="selfSkill" aria-label="기능">${['운', ...RULES.characteristics.map((c) => c.ko), ...Object.keys(inv.skills)].map((k) => `<option>${esc(k)}</option>`).join('')}</select><select id="selfDiff" aria-label="난이도"><option value="regular">보통</option><option value="hard">어려움</option><option value="extreme">극단적</option></select><button data-act="selfRoll">굴리기</button></div></section>
+      </div>
+      <div class="pane pane-notes"><div class="label pane-title">Notebook · 수첩</div>${hos.length ? hos.reverse().map((h) => `<section class="paper"><div class="mono small muted">${esc(h.title)}</div>${h.image ? `<img class="handout-img" src="${h.image}" alt="${esc(h.title)}">` : ''}${h.text ? `<p style="margin-top:8px;font-size:16px">${esc(h.text)}</p>` : ''}${h.note ? `<div class="small muted">${esc(h.note)}</div>` : ''}</section>`).join('') : '<p class="muted">아직 받은 핸드아웃이 없습니다.</p>'}</div>
+      <div class="pane pane-sheet">
+        <section class="card"><div class="label">Characteristics · 특성치</div><div class="stats4" style="grid-template-columns:repeat(4,minmax(0,1fr))">${RULES.characteristics.map((c) => `<div>${c.ko} <b>${inv.ch[c.key]}</b><div class="small">${E.half(inv.ch[c.key])} / ${E.fifth(inv.ch[c.key])}</div></div>`).join('')}</div>
+        <div class="small muted" style="margin-top:8px">피해 보너스 ${esc(inv.db)} · 체구 ${inv.build} · 이동력 ${inv.mov} · 최대 이성 ${inv.sanMax}</div></section>
+        <section class="card stack"><div class="row" style="justify-content:space-between"><span class="label">Skills · 기능</span><button class="small" data-act="improve" ${Object.keys(inv.marks || {}).length ? '' : 'disabled'}>성장 판정 (${Object.keys(inv.marks || {}).length})</button></div>
+        <label>기능 찾기<input value="${esc(ui.filter)}" data-change="filter"></label>
+        <div class="skills">${Object.keys(inv.skills).filter((k) => !ui.filter || k.includes(ui.filter)).map((k) => `<span>${inv.marks && inv.marks[k] ? '<span class="gold">✓</span> ' : ''}${esc(k)} <span class="muted small">${E.half(inv.skills[k])}/${E.fifth(inv.skills[k])}</span></span><input type="number" value="${inv.skills[k]}" data-change="sheetSkill" data-k="${esc(k)}" aria-label="${esc(k)}">`).join('')}</div></section>
+      </div>
+      <div class="pane pane-log"><section class="card"><div class="label">My rolls · 내 굴림</div><div class="log" style="max-height:none">${myLogs.slice().reverse().map((l) => `<div><span class="n ${l.event ? 'gold' : l.success ? 'ok' : 'bad'}">${l.roll ?? '·'}</span> ${esc(l.title)} ${l.levelKo ? `— ${esc(l.levelKo)}` : ''} <span class="muted small">${esc(l.detail || '')}</span></div>`).join('')}</div></section></div>
+      </div>
+      <nav class="p-tabs" aria-label="탐사자 메뉴">${[['roll', `판정${mine.length ? ` (${mine.length})` : ''}`], ['notes', `수첩 ${hos.length}`], ['sheet', '시트'], ['log', '기록']].map(([t, ko]) => `<button class="${ui.tab === t ? 'on' : ''}" data-act="tab" data-t="${t}">${ko}</button>`).join('')}</nav>
+    </div>`;
+  };
+
+  net = connect(ROOM, { local: LOCAL });
+  subscribe();
+  render();
+}
+
+// ═════════ 테이블 ═════════
+function table() {
+  renderFn = () => {
+    const t = room.table || {};
+    const logs = sortByAt(room.log).filter((l) => l.roll != null || l.event);
+    const last = logs[logs.length - 1];
+    const hos = sortByAt(room.handouts);
+    const h = hos[hos.length - 1];
+    const party = sortByAt(room.inv);
+    $app.innerHTML = `<div class="t-wrap">
+      <header class="row" style="justify-content:space-between;align-items:baseline">
+        <div class="row" style="gap:16px;align-items:baseline"><span class="title" style="font-size:34px">${esc(room.meta?.scenarioTitle || '크툴루의 부름')}</span><span style="font-family:var(--fell);font-style:italic;font-size:20px;color:var(--muted)">${esc(room.meta?.scenarioHanja || '')}</span></div>
+        <span class="mono gold" style="letter-spacing:.08em">${esc(t.title || room.meta?.scene || '')} <span data-clock class="bad">${esc(clockText())}</span></span>
+      </header>
+      <div class="t-mid">
+        <section class="t-read" aria-label="장면 묘사">${esc(t.read || (room.meta?.epigraph || '수호자가 장면을 보내면 여기에 나타납니다.'))}</section>
+        <aside class="t-side">
+          ${last ? `<div class="card" aria-label="방금 굴린 주사위"><div class="mono gold small">${esc(last.name || '')} · ${esc(last.title)}</div>
+            <div class="row" style="gap:18px;margin-top:8px">${last.roll != null ? `<span class="t-roll ${last.success ? 'ok' : 'bad'}">${last.roll}</span>` : ''}<div><div class="title ${last.success ? 'ok' : 'bad'}" style="font-size:28px">${esc(last.levelKo || '')}</div><div class="small muted">${last.required != null ? `기준 ${last.required}` : ''}${last.detail ? ` · ${esc(last.detail)}` : ''}</div></div></div></div>` : ''}
+          ${h ? `<div class="paper" style="transform:rotate(1deg)"><div class="mono small muted">${esc(h.title)}</div>${h.image ? `<img class="handout-img" src="${h.image}" alt="${esc(h.title)}">` : ''}${!h.image && h.text ? `<p style="font-size:20px;margin-top:6px">${esc(h.text)}</p>` : ''}</div>` : ''}
+        </aside>
+      </div>
+      <footer class="t-party" aria-label="탐사자 상태">${party.map((p) => `<div style="border-top-color:${/홀림|광기|중상|빈사|사망|의식/.test(p.state || '') ? 'var(--bloodText)' : 'var(--line3)'}"><div class="row" style="justify-content:space-between"><span style="font-size:18px">${esc(p.name)}</span><span class="small ${/홀림|광기|중상|빈사|사망|의식/.test(p.state || '') ? 'bad' : 'muted'}">${esc(p.state || '정상')}</span></div><div class="mono muted">체력 ${p.hp} · 이성 <span class="ok">${p.san}</span></div></div>`).join('')}</footer>
+    </div>`;
+  };
+  net = connect(ROOM, { local: LOCAL });
+  subscribe();
+  render();
+}
+
+// ───────── 시작 ─────────
+if (!ROOM || !ROLE) lobby();
+else if (ROLE === 'keeper') keeper();
+else if (ROLE === 'player') player();
+else table();
+
+</script>
 </body>
 </html>
