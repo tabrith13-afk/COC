@@ -496,7 +496,7 @@ function recoverLuck(luck, rng = defaultRng) {
 
 return { LEVELS, LEVEL_KO, defaultRng, rollExpr, rollD100, successLevel, half, fifth, requiredValue, difficultyFromOpposition, check, canPush, luckSpendOptions, spendLuck, opposed, rollCharacteristics, rollLuck, ageBand, improveEdu, damageBonusAndBuild, moveRate, derived, baseSkills, parseSanLoss, sanityCheck, applySanLoss, resolveTemporaryInsanity, rollBout, rollDamage, applyDamage, dyingRound, firstAid, resolveMelee, firearmRangeDifficulty, pointBlankMeters, isMalfunction, improveSkill, recoverLuck };
 })();
-const { connect, roomCode, newKey, FIREBASE_CONFIG } = (() => {
+const { safeKey, connect, roomCode, newKey, FIREBASE_CONFIG } = (() => {
 // 통신층: 같은 함수로 Firebase 실시간 DB 또는 로컬 테스트 모드(같은 브라우저 탭끼리)를 쓴다.
 // 방 데이터는 coc/rooms/<방 코드> 아래에 있다.
 //   meta      방 정보
@@ -556,6 +556,16 @@ function makeLocal(room) {
   };
 }
 
+// Firebase 키에 쓸 수 없는 문자(. # $ / [ ])를 비슷한 모양의 문자로 바꾸고 undefined를 없앤다
+const safeKey = (k) => String(k).replace(/\//g, '\u2215').replace(/\./g, '\u2024').replace(/#/g, '\uff03').replace(/\$/g, '\uff04').replace(/\[/g, '\uff3b').replace(/\]/g, '\uff3d');
+function clean4fb(v) {
+  if (v === undefined) return null;
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(clean4fb);
+  const o = {};
+  for (const [k, x] of Object.entries(v)) if (x !== undefined) o[safeKey(k)] = clean4fb(x);
+  return o;
+}
 function makeFirebase(room) {
   if (!window.firebase) throw new Error('Firebase를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');
   if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
@@ -565,9 +575,9 @@ function makeFirebase(room) {
     mode: 'firebase',
     on(path, cb) { const ref = r(path); const h = (s) => cb(s.val()); ref.on('value', h); return () => ref.off('value', h); },
     async get(path) { return (await r(path).once('value')).val(); },
-    set: (path, val) => r(path).set(val),
-    update: (path, obj) => r(path).update(obj),
-    async push(path, val) { const ref = r(path).push(); await ref.set(val); return ref.key; },
+    set: (path, val) => r(path).set(clean4fb(val)),
+    update: (path, obj) => { const o = {}; for (const [k, v] of Object.entries(obj)) if (v !== undefined) o[k] = clean4fb(v); return r(path).update(o); },
+    async push(path, val) { const ref = r(path).push(); await ref.set(clean4fb(val)); return ref.key; },
     remove: (path) => r(path).remove(),
   };
 }
@@ -580,7 +590,7 @@ function roomCode() {
   return Array.from({ length: 4 }, () => A[Math.floor(Math.random() * A.length)]).join('');
 }
 
-return { connect, roomCode, newKey, FIREBASE_CONFIG };
+return { safeKey, connect, roomCode, newKey, FIREBASE_CONFIG };
 })();
 const { AI_SYSTEM, buildContext, manualPrompt, parseAI, askGemini } = (() => {
 // AI 키퍼 보조: 맥락을 만들고 Gemini(Firebase AI Logic)에 묻거나, 복사·붙여넣기용 글을 만든다.
@@ -717,6 +727,9 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2600);
 }
 
+window.addEventListener('unhandledrejection', (e) => toast(`오류: ${(e.reason && e.reason.message) || e.reason}`));
+window.addEventListener('error', (e) => { if (e.message) toast(`오류: ${e.message}`); });
+
 let renderFn = () => {};
 let pending = false;
 function render() {
@@ -741,9 +754,12 @@ $app.addEventListener('change', (e) => {
   if (el && actions[el.dataset.change]) actions[el.dataset.change](el.dataset, el);
 });
 
+// 기능 이름을 저장용 이름으로 통일 (예: 라이플/산탄총 → 라이플∕산탄총)
+const normSkills = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [safeKey(k), v]));
 // 기능·특성치 값 찾기
 function targetFor(inv, name) {
   if (!inv) return 0;
+  name = safeKey(name);
   if (name === '운') return inv.luck;
   if (name === '이성') return inv.san;
   if (name === '지식') return inv.ch.EDU;
@@ -912,7 +928,7 @@ function keeper() {
         break;
       }
       case 'sanity': requestSan({ loss: e.loss, trigger: '효과로 인한 이성 판정' }, pid || 'all'); break;
-      case 'skill': if (inv) net.set(`inv/${pid}/skills/${e.skill}`, (targetFor(inv, e.skill) || 0) + e.amount); break;
+      case 'skill': if (inv) net.set(`inv/${pid}/skills/${safeKey(e.skill)}`, (targetFor(inv, e.skill) || 0) + e.amount); break;
       case 'mp': if (inv) net.set(`inv/${pid}/mp`, Math.max(0, inv.mp + e.amount)); break;
       case 'mythos': if (inv) net.update(`inv/${pid}`, { [`skills/크툴루 신화`]: (inv.skills['크툴루 신화'] || 0) + e.amount, sanMax: inv.sanMax - e.amount }); break;
     }
@@ -1214,25 +1230,25 @@ function player() {
 
   function newDraft() {
     const ch = Object.fromEntries(RULES.characteristics.map((c) => [c.key, 50]));
-    return { name: '', occupation: '', age: 25, ch, luck: 50, skills: E.baseSkills(RULES, ch), edited: {} };
+    return { name: '', occupation: '', age: 25, ch, luck: 50, skills: normSkills(E.baseSkills(RULES, ch)), edited: {} };
   }
   function rollDraft(d) {
     d.ch = E.rollCharacteristics(RULES); d.luck = E.rollLuck(RULES, d.age);
-    const base = E.baseSkills(RULES, d.ch);
+    const base = normSkills(E.baseSkills(RULES, d.ch));
     for (const k of Object.keys(base)) if (!d.edited[k]) d.skills[k] = base[k];
   }
   function syncBase(d) {
-    const base = E.baseSkills(RULES, d.ch);
+    const base = normSkills(E.baseSkills(RULES, d.ch));
     for (const k of Object.keys(base)) if (!d.edited[k]) d.skills[k] = base[k];
   }
   async function saveDraft(d) {
     if (!d.name.trim()) return toast('이름을 넣어 주세요.');
     const dv = E.derived(RULES, d.ch, { age: d.age, cthulhuMythos: d.skills['크툴루 신화'] || 0 });
-    await net.set(`inv/${pid}`, {
+    try { await net.set(`inv/${pid}`, {
       at: now(), name: d.name.trim(), occupation: d.occupation.trim(), age: d.age, ch: d.ch, skills: d.skills,
       hpMax: dv.hpMax, hp: dv.hpMax, mpMax: dv.mpMax, mp: dv.mpMax, san: dv.san, sanMax: dv.sanMax, luck: d.luck,
       db: dv.db, build: dv.build, mov: dv.mov, dayStartSan: dv.san, lostToday: 0, state: '정상', marks: {},
-    });
+    }); } catch (err) { return toast(`저장하지 못했습니다: ${err.message || err}`); }
     ui.draft = null; render();
   }
 
@@ -1273,7 +1289,7 @@ function player() {
       if (ap.effects.includes('needIntRoll')) upd.needInt = true;
       await net.update(`inv/${pid}`, upd);
     }
-    if (entry.success && kind === 'skill' && !(r.bonus > 0) && !r.opposed && skill !== '크툴루 신화') await net.set(`inv/${pid}/marks/${skill}`, true);
+    if (entry.success && kind === 'skill' && !(r.bonus > 0) && !r.opposed && skill !== '크툴루 신화') await net.set(`inv/${pid}/marks/${safeKey(skill)}`, true);
     const lid = await net.push('log', entry);
     ui.lastLog = lid;
     if (r.id && !opts.free) await net.set(`req/${r.id}/done/${pid}`, lid);
@@ -1357,7 +1373,7 @@ function player() {
   function viewCreate() {
     const d = ui.draft;
     const dv = E.derived(RULES, d.ch, { age: d.age });
-    const base = E.baseSkills(RULES, d.ch);
+    const base = normSkills(E.baseSkills(RULES, d.ch));
     const spent = Object.keys(d.skills).reduce((a, k) => a + Math.max(0, d.skills[k] - (base[k] || 0)), 0);
     const band = E.ageBand(RULES, d.age);
     const list = Object.keys(d.skills).filter((k) => !ui.filter || k.includes(ui.filter));
