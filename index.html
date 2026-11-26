@@ -592,7 +592,7 @@ function roomCode() {
 
 return { safeKey, connect, roomCode, newKey, FIREBASE_CONFIG };
 })();
-const { AI_SYSTEM, buildContext, manualPrompt, parseAI, askGemini } = (() => {
+const { AI_SYSTEM, buildContext, manualPrompt, parseAI, aiErrorKind, askGemini } = (() => {
 // AI 키퍼 보조: 맥락을 만들고 Gemini(Firebase AI Logic)에 묻거나, 복사·붙여넣기용 글을 만든다.
 // AI는 주사위를 굴리지 않는다. 묘사·NPC 대사·다음 판정 제안만 하고, 수호자가 승인해야 실행된다.
 
@@ -667,10 +667,10 @@ function parseAI(text) {
   }
 }
 
-let cached = null;
-async function getModel(cfg, firebaseConfig) {
-  const key = JSON.stringify([cfg.model, cfg.siteKey, cfg.debug]);
-  if (cached && cached.key === key) return cached.model;
+const cache = new Map();
+async function getModel(cfg, firebaseConfig, modelName) {
+  const key = JSON.stringify([modelName, cfg.siteKey, cfg.debug]);
+  if (cache.has(key)) return cache.get(key);
   const { initializeApp, getApps } = await import(`${SDK}/firebase-app.js`);
   const { getAI, getGenerativeModel, GoogleAIBackend } = await import(`${SDK}/firebase-ai.js`);
   const app = getApps().find((x) => x.name === 'coc-ai') || initializeApp(firebaseConfig, 'coc-ai');
@@ -681,22 +681,49 @@ async function getModel(cfg, firebaseConfig) {
   }
   const ai = getAI(app, { backend: new GoogleAIBackend() });
   const model = getGenerativeModel(ai, {
-    model: cfg.model || 'gemini-3.5-flash',
+    model: modelName,
     systemInstruction: AI_SYSTEM,
     generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
   });
-  cached = { key, model };
+  cache.set(key, model);
   return model;
 }
 
-async function askGemini(cfg, firebaseConfig, user) {
-  if (window.__AI_MOCK) return window.__AI_MOCK(AI_SYSTEM, user);
-  const model = await getModel(cfg, firebaseConfig);
-  const r = await model.generateContent(user);
-  return r.response.text();
+// 오류 종류 나누기
+function aiErrorKind(e) {
+  const m = String((e && e.message) || e);
+  if (/high demand|overload|unavailable|\b50[03]\b|\b429\b|quota|rate/i.test(m)) return 'busy';
+  if (/app.?check|attestation|\b403\b|permission|unauthori/i.test(m)) return 'appcheck';
+  if (/\b404\b|not found|is not supported|unknown model/i.test(m)) return 'model';
+  if (/blocked|safety/i.test(m)) return 'safety';
+  return 'other';
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 붐비면 잠시 쉬었다 다시, 그래도 안 되면 예비 모델로
+async function askGemini(cfg, firebaseConfig, user, onStatus = () => {}) {
+  if (window.__AI_MOCK) return { text: await window.__AI_MOCK(AI_SYSTEM, user), model: 'mock' };
+  const models = [cfg.model || 'gemini-3.5-flash', ...String(cfg.fallback || '').split(',').map((x) => x.trim()).filter(Boolean)];
+  let last;
+  for (const name of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        onStatus(attempt ? `${name} 다시 시도 ${attempt}/2…` : `${name}에 묻는 중…`);
+        const model = await getModel(cfg, firebaseConfig, name);
+        const r = await model.generateContent(user);
+        return { text: r.response.text(), model: name };
+      } catch (e) {
+        last = e;
+        const kind = aiErrorKind(e);
+        if (kind !== 'busy') throw e;
+        if (attempt < 2) await wait(attempt ? 5000 : 2000);
+      }
+    }
+  }
+  throw last;
 }
 
-return { AI_SYSTEM, buildContext, manualPrompt, parseAI, askGemini };
+return { AI_SYSTEM, buildContext, manualPrompt, parseAI, aiErrorKind, askGemini };
 })();
 // 크툴루의 부름 테이블 — 로비 · 수호자 · 탐사자 · 테이블 화면
 
@@ -873,8 +900,9 @@ function lobby() {
 function keeper() {
   const KS = `coc-keeper-${ROOM}`;
   const saved = (() => { try { return JSON.parse(localStorage.getItem(KS) || '{}'); } catch { return {}; } })();
-  const ks = Object.assign({ scene: null, flags: {}, once: {}, entered: {}, items: {}, panel: 'party', showKeeperMd: false, npcRoll: {}, aiCfg: { mode: 'firebase', model: 'gemini-3.5-flash', siteKey: '', debug: false }, aiHistory: [], aiOpen: true, aiSettings: false }, saved);
-  let aiRes = null; let aiBusy = false; let aiErr = '';
+  const ks = Object.assign({ scene: null, flags: {}, once: {}, entered: {}, items: {}, panel: 'party', showKeeperMd: false, npcRoll: {}, aiCfg: { mode: 'firebase', model: 'gemini-3.5-flash', fallback: 'gemini-3.5-flash-lite', siteKey: '', debug: false }, aiHistory: [], aiOpen: true, aiSettings: false }, saved);
+  let aiRes = null; let aiBusy = false; let aiErr = ''; let aiStatus = ''; let aiInfo = '';
+  if (ks.aiCfg.fallback == null) ks.aiCfg.fallback = 'gemini-3.5-flash-lite';
   let scn = null; let images = {}; let keeperMd = '';
   const SCN = `coc-keeper-scn-${ROOM}`;
   try {
@@ -1028,10 +1056,16 @@ function keeper() {
       try { await navigator.clipboard.writeText(manualPrompt(user)); toast('Gemini에 붙여 넣을 글을 복사했습니다.'); } catch { toast('복사하지 못했습니다. 아래 칸의 글을 직접 복사하세요.'); }
       aiRes = { manual: manualPrompt(user) }; render(); return;
     }
-    aiBusy = true; aiErr = ''; render();
-    try { aiRes = parseAI(await askGemini(ks.aiCfg, FIREBASE_CONFIG, user)); aiRes.done = {}; }
-    catch (e) { aiErr = `AI 호출 실패: ${e.message || e}. 설정의 App Check 항목을 확인하거나 '복사·붙여넣기' 방식으로 바꿔 보세요.`; }
-    aiBusy = false; render();
+    aiBusy = true; aiErr = ''; aiInfo = ''; const t0 = Date.now(); render();
+    try {
+      const out = await askGemini(ks.aiCfg, FIREBASE_CONFIG, user, (st) => { aiStatus = st; const el = document.getElementById('aiStatus'); if (el) el.textContent = st; });
+      aiRes = parseAI(out.text); aiRes.done = {};
+      aiInfo = `${out.model} · ${((Date.now() - t0) / 1000).toFixed(1)}초`;
+    } catch (e) {
+      const hint = { busy: '모델이 지금 붐빕니다. 잠시 뒤 다시 누르거나, 설정의 예비 모델을 다른 이름으로 바꿔 보세요.', appcheck: 'App Check 확인에 실패했습니다. reCAPTCHA 사이트 키와 등록한 도메인, 지금 연 주소가 맞는지 확인하세요.', model: '모델 이름을 찾지 못했습니다. Firebase 콘솔 AI Logic의 모델 목록에 있는 이름으로 바꾸세요.', safety: 'Gemini 안전 필터가 답을 막았습니다. 상황 덧붙이기 문구를 바꾸거나 복사·붙여넣기 방식을 써 보세요.', other: '잠시 뒤 다시 시도하거나 복사·붙여넣기 방식을 써 보세요.' }[aiErrorKind(e)];
+      aiErr = `AI 호출 실패 — ${hint}\n(원문: ${e.message || e})`;
+    }
+    aiBusy = false; aiStatus = ''; render();
   };
   actions.aiPaste = () => { const t = document.getElementById('aiPasteBox').value; if (!t.trim()) return; aiRes = parseAI(t); aiRes.done = {}; render(); };
   actions.aiSendNarr = () => {
@@ -1160,6 +1194,7 @@ function keeper() {
           ${ks.aiSettings ? `<div class="row">
             <label>방식<select data-change="aiCfg" data-k="mode"><option value="firebase" ${ks.aiCfg.mode === 'firebase' ? 'selected' : ''}>Firebase AI Logic (자동)</option><option value="manual" ${ks.aiCfg.mode === 'manual' ? 'selected' : ''}>복사·붙여넣기 (Gemini 웹)</option></select></label>
             <label>모델<input value="${esc(ks.aiCfg.model)}" data-change="aiCfg" data-k="model" style="width:180px"></label>
+            <label>예비 모델 (붐빌 때, 쉼표로 여러 개)<input value="${esc(ks.aiCfg.fallback || '')}" data-change="aiCfg" data-k="fallback" style="width:220px"></label>
             <label>reCAPTCHA 사이트 키<input value="${esc(ks.aiCfg.siteKey)}" data-change="aiCfg" data-k="siteKey" style="width:260px" placeholder="App Check용"></label>
             <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text2)"><input type="checkbox" data-change="aiCfg" data-k="debug" ${ks.aiCfg.debug ? 'checked' : ''}> App Check 디버그 모드 (내 컴퓨터 시험용)</label>
           </div>` : ''}
@@ -1171,7 +1206,9 @@ function keeper() {
             <button data-act="aiAsk" data-task="result" ${aiBusy ? 'disabled' : ''}>최근 판정 풀어 말하기</button>
             <button data-act="aiAsk" data-task="next" ${aiBusy ? 'disabled' : ''}>막혔을 때 다음 제안</button>
           </div>
-          ${aiErr ? `<div class="small bad">${esc(aiErr)}</div>` : ''}
+          ${aiBusy ? `<div class="small gold" id="aiStatus">${esc(aiStatus || '묻는 중…')}</div>` : ''}
+          ${aiErr ? `<div class="small bad" style="white-space:pre-line">${esc(aiErr)}</div>` : ''}
+          ${aiInfo && !aiBusy ? `<div class="small muted">응답: ${esc(aiInfo)}</div>` : ''}
           ${ks.aiCfg.mode === 'manual' ? `<label>Gemini 답 붙여 넣기<textarea id="aiPasteBox" rows="3" placeholder="Gemini가 준 JSON(또는 글)을 붙여 넣으세요"></textarea></label><div class="row"><button data-act="aiPaste">답 적용</button>${aiRes && aiRes.manual ? '<span class="small muted">복사한 글을 gemini.google.com 대화창에 붙여 넣으세요.</span>' : ''}</div>` : ''}
           ${aiRes && !aiRes.manual ? `
             <label>묘사 (고쳐서 보내도 됩니다)<textarea id="aiNarr" rows="4" style="font-family:var(--hand);font-size:16px">${esc(aiRes.narration)}</textarea></label>
