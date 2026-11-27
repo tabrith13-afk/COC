@@ -134,6 +134,7 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute
 <body>
 <div id="app"></div>
 <script type="module">
+window.__BUILD = 'v11-27 16:13';
 window.__RULES = {"id":"coc7-kr","version":"1.0.0","note":"크툴루의 부름 7판 한국어판 수호자 룰북(v1.00)의 규칙을 수치와 짧은 이름으로 옮긴 데이터. 룰북 본문은 담지 않는다. page는 룰북 쪽수.","characteristics":[{"key":"STR","ko":"근력","roll":"3D6","mult":5,"page":30},{"key":"CON","ko":"건강","roll":"3D6","mult":5,"page":30},{"key":"SIZ","ko":"크기","roll":"2D6+6","mult":5,"page":31},{"key":"DEX","ko":"민첩성","roll":"3D6","mult":5,"page":31},{"key":"APP","ko":"외모","roll":"3D6","mult":5,"page":31},{"key":"INT","ko":"지능","roll":"2D6+6","mult":5,"page":31},{"key":"POW","ko":"정신력","roll":"3D6","mult":5,"page":31},{"key":"EDU","ko":"교육","roll":"2D6+6","mult":5,"page":31}],"luck":{"ko":"운","roll":"3D6","mult":5,"max":99,"page":32},"ageModifiers":{"page":32,"note":"해당 나이 구간 하나만 적용(누적 아님). reduce는 플레이어가 나눠 뺄 총점.","bands":[{"min":15,"max":19,"reduceFrom":["STR","SIZ"],"reduce":5,"EDU":-5,"luckRollTwiceTakeHigher":true,"eduImprove":0,"APP":0},{"min":20,"max":39,"reduceFrom":[],"reduce":0,"eduImprove":1,"APP":0},{"min":40,"max":49,"reduceFrom":["STR","CON","DEX"],"reduce":5,"eduImprove":2,"APP":-5},{"min":50,"max":59,"reduceFrom":["STR","CON","DEX"],"reduce":10,"eduImprove":3,"APP":-10},{"min":60,"max":69,"reduceFrom":["STR","CON","DEX"],"reduce":20,"eduImprove":4,"APP":-15},{"min":70,"max":79,"reduceFrom":["STR","CON","DEX"],"reduce":40,"eduImprove":4,"APP":-20},{"min":80,"max":89,"reduceFrom":["STR","CON","DEX"],"reduce":80,"eduImprove":4,"APP":-25}],"eduImproveRule":"1D100이 현재 교육보다 크면 교육 +1D10 (최대 99)"},"derived":{"hp":{"ko":"체력","formula":"floor((CON+SIZ)/10)","page":33},"mp":{"ko":"마력","formula":"floor(POW/5)","page":31},"san":{"ko":"이성","formula":"POW","page":31},"sanMax":{"ko":"최대 이성","formula":"99 - 크툴루 신화","page":153},"half":{"ko":"절반값","formula":"floor(x/2)","page":32},"fifth":{"ko":"5분의 1값","formula":"floor(x/5)","page":32}},"damageBonus":{"page":33,"basis":"STR+SIZ","table":[{"min":2,"max":64,"db":"-2","build":-2},{"min":65,"max":84,"db":"-1","build":-1},{"min":85,"max":124,"db":"0","build":0},{"min":125,"max":164,"db":"1D4","build":1},{"min":165,"max":204,"db":"1D6","build":2},{"min":205,"max":284,"db":"2D6","build":3},{"min":285,"max":364,"db":"3D6","build":4},{"min":365,"max":444,"db":"4D6","build":5},{"min":445,"max":524,"db":"5D6","build":6}],"beyond":"525부터 80점 구간마다 피해 보너스 +1D6, 체구 +1","firearmsNoDB":true},"move":{"page":33,"rules":[{"if":"STR<SIZ && DEX<SIZ","mov":7},{"if":"STR>SIZ && DEX>SIZ","mov":9},{"if":"otherwise","mov":8}],"agePenalty":[{"min":40,"max":49,"mod":-1},{"min":50,"max":59,"mod":-2},{"min":60,"max":69,"mod":-3},{"min":70,"max":79,"mod":-4},{"min":80,"max":89,"mod":-5}],"metersPerRound":"MOV x 5"},"skills":{"page":56,"legend":{"modern":"현대 배경 전용","rare":"표준 시트에 없는 희귀 기능","spec":"전문 분야로 나뉨"},"list":[{"ko":"감정","base":5},{"ko":"고고학","base":1},{"ko":"과학","base":1,"spec":true,"children":[{"ko":"공학","base":1},{"ko":"기상학","base":1},{"ko":"동물학","base":1},{"ko":"물리학","base":1},{"ko":"생물학","base":1},{"ko":"수사과학","base":1},{"ko":"수학","base":10},{"ko":"식물학","base":1},{"ko":"암호학","base":1},{"ko":"약학","base":1},{"ko":"지질학","base":1},{"ko":"천문학","base":1},{"ko":"화학","base":1}]},{"ko":"관찰력","base":25},{"ko":"근접전","spec":true,"combat":"melee","children":[{"ko":"격투","base":25},{"ko":"가롯테","base":15},{"ko":"도검","base":20},{"ko":"도끼","base":15},{"ko":"도리깨","base":10},{"ko":"동력톱","base":10},{"ko":"창","base":20},{"ko":"채찍","base":5}]},{"ko":"기계 수리","base":10},{"ko":"도약","base":20},{"ko":"독순술","base":1,"rare":true},{"ko":"동물 다루기","base":5,"rare":true},{"ko":"듣기","base":20},{"ko":"말재주","base":5,"social":true},{"ko":"매혹","base":15,"social":true},{"ko":"법률","base":5},{"ko":"변장","base":5},{"ko":"비밀 지식","base":1,"rare":true,"spec":true},{"ko":"사격","spec":true,"combat":"firearm","children":[{"ko":"권총","base":20},{"ko":"라이플/산탄총","base":25},{"ko":"기관단총","base":15},{"ko":"기관총","base":10},{"ko":"중화기","base":10},{"ko":"화염방사기","base":10},{"ko":"활","base":15}]},{"ko":"생존술","base":10,"spec":true},{"ko":"설득","base":10,"social":true},{"ko":"손놀림","base":10},{"ko":"수영","base":20},{"ko":"승마","base":5},{"ko":"심리학","base":10},{"ko":"언어 (모국어)","base":"EDU"},{"ko":"언어 (외국어)","base":1,"spec":true},{"ko":"역사","base":5},{"ko":"열쇠공","base":1},{"ko":"예술/공예","base":5,"spec":true,"children":[{"ko":"미술","base":5},{"ko":"사진","base":5},{"ko":"연기","base":5},{"ko":"위조","base":5}]},{"ko":"오르기","base":20},{"ko":"오컬트","base":5},{"ko":"위협","base":15,"social":true},{"ko":"은밀행동","base":20},{"ko":"응급처치","base":30},{"ko":"의료","base":1},{"ko":"인류학","base":1},{"ko":"자동차 운전","base":20},{"ko":"자료 조사","base":20},{"ko":"자연","base":10},{"ko":"잠수","base":1,"rare":true},{"ko":"재력","base":0},{"ko":"전기 수리","base":10},{"ko":"전자기기","base":1,"modern":true},{"ko":"정신분석","base":1},{"ko":"중장비 조작","base":1},{"ko":"조종","base":1,"spec":true},{"ko":"최면술","base":1,"rare":true},{"ko":"추적","base":10},{"ko":"컴퓨터 사용","base":5,"modern":true},{"ko":"크툴루 신화","base":0,"noImprove":true},{"ko":"투척","base":20,"combat":"thrown"},{"ko":"포격","base":1,"rare":true},{"ko":"폭파","base":1,"rare":true},{"ko":"항법","base":10},{"ko":"회계","base":5},{"ko":"회피","base":"DEX/2","combat":"dodge"}]},"checks":{"page":[88,89],"levels":["fumble","fail","regular","hard","extreme","critical"],"levelKo":{"fumble":"대실패","fail":"실패","regular":"보통 성공","hard":"어려운 성공","extreme":"극단적 성공","critical":"대성공"},"critical":1,"fumble":{"ifTargetBelow50":[96,100],"ifTarget50OrMore":[100,100]},"difficulty":{"regular":"기준치 그대로","hard":"절반값","extreme":"5분의 1값"},"opposingDifficulty":{"page":86,"rule":"대항 수치 50 이상이면 어려움, 90 이상이면 극단적"},"humanLimit":{"page":86,"rule":"극단적 성공으로 넘을 수 있는 한계는 기준치 + 100"},"bonusPenalty":{"page":89,"max":2,"cancel":"보너스 1개와 페널티 1개는 상쇄","overflow":"페널티가 2개를 넘으면 대신 난이도를 한 단계 올린다 (p.112 예시)"},"opposed":{"page":88,"tie":"성공 수준이 같으면 기준치가 높은 쪽 승리, 그래도 같으면 교착 또는 다시 굴림"},"push":{"page":83,"allowed":["skill","characteristic"],"notAllowed":["combat","damage","sanity","sanityLoss","luck"],"fumbleCannotBePushed":true,"onFail":"수호자가 정하는 심각한 대가"},"groupLuck":{"page":88,"rule":"집단 운 판정은 그 장면에서 운이 가장 낮은 탐사자가 굴린다"}},"luckSpend":{"optional":true,"page":97,"rule":"운 1점마다 굴림값 -1","notFor":["luck","damage","sanity","sanityLoss"],"notAfterPush":true,"cannotChange":["critical","fumble","malfunction"],"noImproveMark":true,"recovery":"세션이 끝날 때 1D100 > 현재 운 이면 운 +1D10 (최대 99)","stayConscious":{"page":123,"rule":"의식을 잃을 때 운 1점으로 그 라운드 끝까지 버팀, 이후 라운드마다 2, 4, 8…점"}},"improvement":{"page":92,"rule":"향상 표시된 기능마다 1D100 > 현재 기능 이거나 96 이상이면 +1D10","over90Sanity":"이번 성장 단계에서 90 이상이 된 기능마다 이성 +2D6","noMarkFor":["bonus dice 사용 판정","운으로 바꾼 성공","대항 판정에서 진 쪽"]},"sanity":{"page":[152,161],"notation":"성공 손실/실패 손실 (예: 0/1D4)","fumble":"대실패면 실패 손실의 최대값","noLuck":true,"noPush":true,"temporary":{"trigger":"한 번의 이성 판정으로 5 이상 잃음","then":"지능 판정: 성공하면 일시적 광기(1D10시간), 실패하면 기억을 억누르고 광기를 면함"},"indefinite":{"trigger":"플레이 속 하루 동안 그날 시작 시 이성의 5분의 1 이상 잃음","then":"장기적 광기"},"permanent":{"trigger":"이성 0","then":"영구적 광기, 더 이상 플레이어 캐릭터가 아님"},"boutDuration":{"realtime":"1D10 라운드","summary":"1D10 시간"},"boutRealtime":["기억상실","심신성 장애","폭력","편집증","중요한 사람 착각","기절","필사적인 도주","발작적 행동·감정 폭발","공포증","집착증"],"boutSummary":["기억상실","도난","부상","폭력","사상/신념 표출","중요한 사람에게 감","시설 감금","공황 도주","공포증","집착증"],"phobiaManiaTables":"표 9·10은 1D100 표. 툴에는 넣지 않고 수호자가 룰북에서 고른다."},"wounds":{"page":[117,119],"majorWound":"공격 한 번의 피해가 최대 체력의 절반 이상","instantDeath":"공격 한 번의 피해가 최대 체력 초과","onMajorWound":["중상 표시","즉시 쓰러짐","건강 판정 실패 시 의식 잃음"],"hpZero":{"noMajor":"의식 잃음","withMajor":"빈사"},"dying":"즉시 의식 잃음. 다음 라운드 끝부터 매 라운드 건강 판정, 실패하면 사망. 응급처치로만 안정(임시 체력 1).","stabilized":"한 시간마다 건강 판정, 실패하면 다시 빈사","firstAid":"1시간 안에 성공하면 체력 +1. 한 번만(재시도는 강행). 빈사 환자는 강행 취급 안 함.","medicine":"1시간 이상 걸림, 체력 +1D3. 당일이 지나면 어려움. 빈사면 먼저 응급처치로 안정시켜야 함."},"combat":{"page":[100,117],"order":"민첩성 높은 순, 같으면 전투 기능 높은 순","defense":{"dodge":{"tie":"defender","note":"방어자 성공 수준이 같거나 높으면 피함"},"fightBack":{"tie":"attacker","note":"더 높은 쪽이 피해를 줌, 같으면 공격자"}},"outnumbered":"이번 라운드 이미 회피·반격한 대상을 근접 공격하면 보너스 주사위 1 (사격 제외)","extremeDamage":{"rule":"자기 차례 공격에서 극단적 성공 (반격으로는 안 됨)","nonImpaling":"무기 최대 피해 + 피해 보너스 최대","impaling":"무기 최대 피해 + 피해 보너스 최대 + 무기 피해 한 번 더 굴림"},"firearms":{"noDodgeOrFightBack":true,"diveForCover":"회피 성공 시 공격자 페널티 1, 성공 여부와 관계없이 다음 공격 포기","pointBlank":"민첩성/5/3 미터 이내면 보너스 주사위 1","range":{"base":"regular","long":"hard (기본 거리 2배까지)","veryLong":"extreme (4배까지, 치명타는 대성공만)"},"malfunction":"굴림값이 고장 수치 이상이면 발사 안 됨","noDB":true},"noPush":true},"weapons":{"page":[405,409],"note":"자주 쓰는 것만 골라 넣음. 나머지는 시나리오 파일에서 추가.","list":[{"id":"unarmed","ko":"맨손 (주먹·발)","skill":"근접전 (격투)","damage":"1D3","db":"full","impale":false,"range":"접촉"},{"id":"knuckle","ko":"놋쇠 너클","skill":"근접전 (격투)","damage":"1D3+1","db":"full","impale":false,"range":"접촉"},{"id":"torch","ko":"횃불","skill":"근접전 (격투)","damage":"1D6","db":"none","impale":false,"range":"접촉","extra":"불"},{"id":"club_l","ko":"몽둥이, 대형 (야구 배트·부지깽이)","skill":"근접전 (격투)","damage":"1D8","db":"full","impale":false,"range":"접촉"},{"id":"club_s","ko":"몽둥이, 소형 (경찰봉)","skill":"근접전 (격투)","damage":"1D6","db":"full","impale":false,"range":"접촉"},{"id":"hatchet","ko":"손도끼/손낫","skill":"근접전 (도끼)","damage":"1D6+1","db":"full","impale":true,"range":"접촉"},{"id":"knife_l","ko":"단도, 대형 (마체테 등)","skill":"근접전 (격투)","damage":"1D8","db":"full","impale":true,"range":"접촉"},{"id":"knife_m","ko":"단도, 중형 (식칼 등)","skill":"근접전 (격투)","damage":"1D4+2","db":"full","impale":true,"range":"접촉"},{"id":"knife_s","ko":"단도, 소형 (잭나이프 등)","skill":"근접전 (격투)","damage":"1D4","db":"full","impale":true,"range":"접촉"},{"id":"woodaxe","ko":"벌목용 도끼","skill":"근접전 (도끼)","damage":"1D8+2","db":"full","impale":true,"range":"접촉"},{"id":"chainsaw","ko":"동력톱","skill":"근접전 (동력톱)","damage":"2D8","db":"none","impale":true,"range":"접촉","malfunction":95},{"id":"whip","ko":"채찍","skill":"근접전 (채찍)","damage":"1D3","db":"half","impale":false,"range":"3m"},{"id":"pistol_38","ko":".38 또는 9mm 리볼버","skill":"사격 (권총)","damage":"1D10","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":6,"malfunction":100},{"id":"glock17","ko":"글록 17 9mm","skill":"사격 (권총)","damage":"1D10","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":17,"malfunction":98},{"id":"pistol_45","ko":".45 오토매틱","skill":"사격 (권총)","damage":"1D10+2","db":"none","impale":true,"range":"15m","shots":"1 (3)","ammo":7,"malfunction":100},{"id":"rifle_22","ko":".22 볼트액션 라이플","skill":"사격 (라이플/산탄총)","damage":"1D6+1","db":"none","impale":true,"range":"30m","shots":"1","ammo":6,"malfunction":99},{"id":"rifle_3006","ko":".30-06 볼트액션 라이플","skill":"사격 (라이플/산탄총)","damage":"2D6+4","db":"none","impale":true,"range":"110m","shots":"1","ammo":5,"malfunction":100},{"id":"shotgun12","ko":"12 게이지 산탄총 (펌프)","skill":"사격 (라이플/산탄총)","damage":"4D6/2D6/1D6","db":"none","impale":false,"range":"10/20/50m","shots":"1","ammo":5,"malfunction":100}]}};
 const E = (() => {
 // 크툴루의 부름 7판 규칙 엔진
@@ -592,7 +593,7 @@ function roomCode() {
 
 return { safeKey, connect, roomCode, newKey, FIREBASE_CONFIG };
 })();
-const { AI_SYSTEM, buildContext, manualPrompt, parseAI, aiErrorKind, askGemini } = (() => {
+const { AI_SYSTEM, buildContext, manualPrompt, parseAI, testAppCheck, aiErrorKind, askGemini } = (() => {
 // AI 키퍼 보조: 맥락을 만들고 Gemini(Firebase AI Logic)에 묻거나, 복사·붙여넣기용 글을 만든다.
 // AI는 주사위를 굴리지 않는다. 묘사·NPC 대사·다음 판정 제안만 하고, 수호자가 승인해야 실행된다.
 
@@ -670,17 +671,29 @@ function parseAI(text) {
 }
 
 const cache = new Map();
-async function getModel(cfg, firebaseConfig, modelName, system) {
-  const key = JSON.stringify([modelName, cfg.siteKey, cfg.debug, system.length, system.slice(0, 40)]);
-  if (cache.has(key)) return cache.get(key);
+let acState = null;
+const acSig = (cfg) => JSON.stringify([cfg.siteKey || '', !!cfg.debug, cfg.acProvider || 'enterprise', cfg.debugToken || '']);
+async function getApp(firebaseConfig) {
   const { initializeApp, getApps } = await import(`${SDK}/firebase-app.js`);
+  return getApps().find((x) => x.name === 'coc-ai') || initializeApp(firebaseConfig, 'coc-ai');
+}
+// App Check는 한 페이지에서 한 번만 켤 수 있다(설정을 바꾸면 새로고침 필요)
+async function ensureAppCheck(cfg, app) {
+  if (acState) return acState;
+  if (!(cfg.siteKey || cfg.debug)) return null;
+  if (cfg.debug) self.FIREBASE_APPCHECK_DEBUG_TOKEN = cfg.debugToken || true;
+  const mod = await import(`${SDK}/firebase-app-check.js`);
+  const Prov = cfg.acProvider === 'v3' ? mod.ReCaptchaV3Provider : mod.ReCaptchaEnterpriseProvider;
+  const appCheck = mod.initializeAppCheck(app, { provider: new Prov(cfg.siteKey || 'debug'), isTokenAutoRefreshEnabled: true });
+  acState = { appCheck, getToken: mod.getToken, sig: acSig(cfg) };
+  return acState;
+}
+async function getModel(cfg, firebaseConfig, modelName, system) {
+  const key = JSON.stringify([modelName, acSig(cfg), system.length, system.slice(0, 40)]);
+  if (cache.has(key)) return cache.get(key);
   const { getAI, getGenerativeModel, GoogleAIBackend } = await import(`${SDK}/firebase-ai.js`);
-  const app = getApps().find((x) => x.name === 'coc-ai') || initializeApp(firebaseConfig, 'coc-ai');
-  if (cfg.debug) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  if (cfg.siteKey || cfg.debug) {
-    const { initializeAppCheck, ReCaptchaEnterpriseProvider } = await import(`${SDK}/firebase-app-check.js`);
-    try { initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(cfg.siteKey || 'debug'), isTokenAutoRefreshEnabled: true }); } catch (e) { if (!/already/i.test(e.message)) throw e; }
-  }
+  const app = await getApp(firebaseConfig);
+  await ensureAppCheck(cfg, app);
   const ai = getAI(app, { backend: new GoogleAIBackend() });
   const model = getGenerativeModel(ai, {
     model: modelName,
@@ -689,6 +702,30 @@ async function getModel(cfg, firebaseConfig, modelName, system) {
   });
   cache.set(key, model);
   return model;
+}
+
+// App Check 토큰을 직접 받아 보고, 실패 이유를 알려 준다
+async function testAppCheck(cfg, firebaseConfig) {
+  if (!(cfg.siteKey || cfg.debug)) return { ok: false, hint: 'reCAPTCHA 사이트 키가 비어 있습니다. App Check를 적용했다면 키를 넣어야 합니다.' };
+  try {
+    const app = await getApp(firebaseConfig);
+    const st = await ensureAppCheck(cfg, app);
+    if (st.sig !== acSig(cfg)) return { ok: false, hint: '설정을 바꾼 뒤에는 F5로 새로고침해야 새 설정으로 시험합니다.' };
+    const t = await st.getToken(st.appCheck, true);
+    return { ok: true, token: String(t.token).slice(0, 12) + '…', hint: cfg.debug
+      ? '디버그 토큰으로 App Check 토큰을 받았습니다. 이제 AI 호출이 되어야 합니다.'
+      : 'App Check 토큰을 받았습니다. 그래도 401이면 Firebase 콘솔 App Check에 등록된 웹 앱이 아래 앱 ID와 같은지 확인하세요.' };
+  } catch (e) {
+    const m = String(e.message || e); const code = (e.code || (m.match(/appCheck\/[a-z-]+/) || [])[0] || '');
+    let hint = '알 수 없는 오류입니다. 아래 원문을 확인하세요.';
+    if (/recaptcha-error/.test(code + m)) hint = 'reCAPTCHA가 토큰을 주지 않았습니다. 사이트 키가 틀렸거나, 지금 주소(도메인)가 그 키의 도메인 목록에 없습니다. 키 종류(Enterprise/v3)도 확인하세요.';
+    else if (/fetch-status-error|403|400/.test(code + m)) hint = cfg.debug
+      ? '디버그 토큰이 콘솔에 등록되지 않았습니다. 아래 디버그 토큰을 Firebase 콘솔 → App Check → 앱 메뉴(⋮) → 디버그 토큰 관리에 추가하세요.'
+      : 'Firebase가 reCAPTCHA 토큰을 거절했습니다. 콘솔 App Check에 등록한 공급자 종류(reCAPTCHA Enterprise / reCAPTCHA v3)와 키가 여기 설정과 같은지 확인하세요.';
+    else if (/throttled/.test(code + m)) hint = '실패가 반복돼 잠시 막혔습니다. 설정을 고친 뒤 F5로 새로고침하고 다시 시험하세요.';
+    else if (/already/i.test(m)) hint = '설정을 바꾼 뒤에는 F5로 새로고침해야 새 설정으로 시험합니다.';
+    return { ok: false, code, error: m.slice(0, 400), hint };
+  }
 }
 
 // 오류 종류 나누기
@@ -726,7 +763,7 @@ async function askGemini(cfg, firebaseConfig, user, onStatus = () => {}, system 
   throw last;
 }
 
-return { AI_SYSTEM, buildContext, manualPrompt, parseAI, aiErrorKind, askGemini };
+return { AI_SYSTEM, buildContext, manualPrompt, parseAI, testAppCheck, aiErrorKind, askGemini };
 })();
 const { RULE_BRIEF, AUTO_SYSTEM, AUTO_TASKS, freeSanOk, condFlags, knownSkill, vetActions, decide, clockMinutes } = (() => {
 // AI 단독 수호자(자율 진행) — 규칙 요약, 행동 검사, 다음 차례 판단.
@@ -917,7 +954,7 @@ function decide(s) {
     return { task: null, why: '탐사자들이 말을 마치길 기다리는 중', retryIn: s.quietSec * 1000 - s.quietMs + 200 };
   }
   if (s.idleSec && s.idleMs >= s.idleSec * 1000 && !s.nudged) return { task: 'next' };
-  return { task: null, why: '탐사자들의 행동을 기다리는 중' };
+  return { task: null, why: '탐사자들의 행동을 기다리는 중 — 탐사자 창에서 행동을 적고 \'보내고 수호자에게 넘기기\'를 누르면 바로 응답합니다.' };
 }
 
 // 시계 길이(예: "30분", "1시간") → 분
@@ -967,7 +1004,7 @@ let renderFn = () => {};
 let pending = false;
 function render() {
   const a = document.activeElement;
-  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.dataset.keep !== 'no') { pending = true; return; }
+  if (a && $app.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !/^(checkbox|radio|button|file)$/.test(a.type) && a.dataset.keep !== 'no') { pending = true; return; }
   pending = false;
   const scroll = window.scrollY;
   renderFn();
@@ -1110,6 +1147,9 @@ function keeper() {
   ks.gm = Object.assign({ mode: 'assist', paused: false, quietSec: 10, idleSec: 0, maxChain: 3 }, ks.gm || {});
   let aiRes = null; let aiBusy = false; let aiErr = ''; let aiStatus = ''; let aiInfo = '';
   if (ks.aiCfg.fallback == null) ks.aiCfg.fallback = 'gemini-3.5-flash-lite';
+  if (!ks.aiCfg.acProvider) ks.aiCfg.acProvider = 'enterprise';
+  if (!ks.aiCfg.debugToken) ks.aiCfg.debugToken = (crypto.randomUUID ? crypto.randomUUID() : newKey() + newKey()).toUpperCase();
+  let acTest = null;
   let scn = null; let images = {}; let keeperMd = '';
   const SCN = `coc-keeper-scn-${ROOM}`;
   try {
@@ -1296,6 +1336,8 @@ function keeper() {
     else if (g.type === 'scene') { if (!scn.scenes.find((x) => x.id === g.to)) return toast('없는 장면입니다.'); goScene(g.to); }
     aiRes.done[d.i] = true; render();
   };
+  actions.acTest = async () => { acTest = { hint: '시험하는 중…' }; render(); acTest = await testAppCheck(ks.aiCfg, FIREBASE_CONFIG); render(); };
+  actions.copyDebug = () => { navigator.clipboard.writeText(ks.aiCfg.debugToken).then(() => toast('디버그 토큰을 복사했습니다.')); };
   actions.aiCfg = (d, el) => { ks.aiCfg[d.k] = el.type === 'checkbox' ? el.checked : el.value.trim(); save(); render(); };
   actions.aiToggle = (d) => { ks[d.k] = !ks[d.k]; save(); render(); };
   actions.exportLog = () => {
@@ -1413,7 +1455,7 @@ function keeper() {
       const kind = aiErrorKind(e);
       ks.retryAt = now() + (kind === 'busy' ? 20000 : 8000);
       journal({ task, error: `${{ busy: '모델이 붐빔', appcheck: 'App Check 거부(401/403) — 설정의 사이트 키·디버그 모드·등록 도메인 확인', model: '모델 이름 오류', safety: '안전 필터에 막힘' }[kind] || 'AI 호출 실패'}: ${String(e.message || e).slice(0, 500)}` });
-      if (ks.fails >= 3 || kind === 'appcheck' || kind === 'model') { ks.gm.paused = true; journal({ task: '멈춤', note: '연달아 실패해 자율 진행을 멈췄습니다. 설정을 확인한 뒤 다시 시작하세요.' }); }
+      if (ks.fails >= 3 || kind === 'appcheck' || kind === 'model') { ks.gm.paused = true; ks.pauseReason = kind === 'appcheck' ? 'App Check가 AI 호출을 거부했습니다(설정 확인)' : kind === 'model' ? '모델 이름을 찾지 못했습니다' : 'AI 호출이 연달아 실패했습니다'; journal({ task: '멈춤', note: ks.pauseReason }); }
       aiBusy = false; aiStatus = ''; net.update('meta', { ai: 'waiting' }); save(); render(); return;
     }
     ks.fails = 0;
@@ -1447,7 +1489,7 @@ function keeper() {
     }
     if (task === 'ending') { ks.ended = true; did.push(...endingRewards()); }
     // 3) 정리
-    if (task === 'open' || task === 'ending') { if (!vet.ok.some((a) => a.type === 'scene')) ks.needOpen = false; }
+    if (task === 'open' || task === 'ending') { ks.openedScene = s.id; if (!vet.ok.some((a) => a.type === 'scene')) ks.needOpen = false; }
     if (task === 'next') ks.nudged = true;
     const selfOnly = results.length > 0 && results.every((r) => r.auto);
     ks.chain = task === 'respond' || (task === 'result' && !selfOnly) ? 0 : (ks.chain || 0) + 1;
@@ -1460,10 +1502,14 @@ function keeper() {
 
   async function autoTick(force) {
     if (!scn || aiBusy || ks.gm.mode !== 'auto') return;
-    if (!isHost()) return setWhy('다른 수호자 탭이 자율 진행을 맡고 있습니다.');
-    if (now() - lastBeat > 10000) { lastBeat = now(); net.update('meta', { autoHost: { id: TAB, at: now() }, auto: !ks.gm.paused, autoQuiet: ks.gm.quietSec }); }
     if (ks.aiCfg.mode === 'manual') return setWhy('복사·붙여넣기 방식에서는 자율 진행을 할 수 없습니다. 설정에서 Firebase AI Logic으로 바꾸세요.');
-    if (ks.gm.paused) return setWhy('일시정지 중입니다.');
+    if (ks.gm.paused) {
+      if (room.meta && room.meta.autoHost && room.meta.autoHost.id === TAB) net.update('meta', { autoHost: null, auto: false });
+      return setWhy(`일시정지 중입니다${ks.pauseReason ? ` — ${ks.pauseReason}` : ''}. '다시 시작'을 누르세요.`);
+    }
+    if (!isHost()) { if (!document.querySelector('[data-act=gmTake]')) render(); return setWhy('다른 수호자 탭(또는 다른 기기)이 진행을 맡고 있습니다. 이 탭에서 하려면 \'이 탭에서 진행\'을 누르세요.'); }
+    if (now() - lastBeat > 10000) { lastBeat = now(); net.update('meta', { autoHost: { id: TAB, at: now() }, auto: true, autoQuiet: ks.gm.quietSec }); }
+    if (ks.openedScene !== ks.scene) ks.needOpen = true;
     if (!force && ks.retryAt && now() < ks.retryAt) return setWhy('잠시 뒤 다시 시도합니다…');
     processLogs();
     const open = openReqList();
@@ -1477,7 +1523,7 @@ function keeper() {
     const d = decide({ ended: ks.ended, chain: ks.chain || 0, maxChain: ks.gm.maxChain, openReqs: open.length, needInt: invList().some((i) => i.needInt), needOpen: ks.needOpen, isEnding: (scene() || {}).act === 'ending', newResults: ks.lastResults.length, newChat: chats.length, go: force || chats.some((c) => c.go), quietMs: now() - lastChatAt, quietSec: ks.gm.quietSec, idleMs: now() - lastAct, idleSec: ks.gm.idleSec, nudged: ks.nudged });
     let task = d.task;
     if (!task && force && !d.stop && !open.length) task = 'next';
-    if (d.stop && !force) { ks.gm.paused = true; ks.chain = 0; journal({ task: '멈춤', note: d.why }); net.update('meta', { auto: false }); save(); render(); return; }
+    if (d.stop && !force) { ks.gm.paused = true; ks.pauseReason = d.why; ks.chain = 0; journal({ task: '멈춤', note: d.why }); net.update('meta', { auto: false }); save(); render(); return; }
     if (!task) { save(); return setWhy(d.why); }
     if (chats.length) ks.seenChatAt = lastChatAt;
     setWhy({ open: '장면 도입을 쓰는 중…', respond: '탐사자 행동에 응답하는 중…', result: '판정 결과를 이야기하는 중…', next: '이야기를 이어 가는 중…', ending: '결말을 쓰는 중…' }[task]);
@@ -1491,13 +1537,14 @@ function keeper() {
       const logs = sortByAt(room.log), chats = sortByAt(room.chat);
       ks.seenLogAt = logs.length ? logs[logs.length - 1].at : 0; ks.seenChatAt = chats.length ? chats[chats.length - 1].at : 0;
       ks.lastResults = []; ks.chain = 0; ks.fails = 0; ks.ended = (scene() || {}).act === 'ending' && ks.ended; ks.gm.paused = false; ks.lastAiAt = now();
-      ks.needOpen = !Object.keys(room.story || {}).length;
+      ks.needOpen = true; ks.openedScene = null; ks.pauseReason = '';
       net.update('meta', { autoHost: { id: TAB, at: now() }, auto: true, autoQuiet: ks.gm.quietSec }); lastBeat = now();
       journal({ task: '시작', note: '자율 진행을 켰습니다.' });
     } else { net.update('meta', { auto: false, ai: null }); }
     save(); render();
   };
-  actions.gmPause = () => { ks.gm.paused = !ks.gm.paused; if (!ks.gm.paused) { ks.chain = 0; ks.fails = 0; ks.retryAt = 0; ks.ended = false; } net.update('meta', { auto: !ks.gm.paused }); journal({ task: ks.gm.paused ? '멈춤' : '다시 시작', note: ks.gm.paused ? '수호자가 일시정지했습니다.' : '' }); save(); render(); };
+  actions.gmPause = () => { ks.gm.paused = !ks.gm.paused; ks.pauseReason = ks.gm.paused ? '수호자가 멈춤' : ''; if (!ks.gm.paused) { ks.chain = 0; ks.fails = 0; ks.retryAt = 0; ks.ended = false; lastBeat = 0; } net.update('meta', { auto: !ks.gm.paused }); journal({ task: ks.gm.paused ? '멈춤' : '다시 시작', note: ks.gm.paused ? '수호자가 일시정지했습니다.' : '' }); save(); render(); };
+  actions.gmTake = () => { net.update('meta', { autoHost: { id: TAB, at: now() }, auto: true }); lastBeat = now(); toast('이 탭에서 진행합니다.'); setTimeout(render, 300); };
   actions.gmNow = () => { if (ks.gm.paused) { ks.gm.paused = false; net.update('meta', { auto: true }); } ks.chain = 0; ks.retryAt = 0; autoTick(true); };
   actions.gmSet = (d, el) => { const v = Math.max(0, parseInt(el.value, 10) || 0); ks.gm[d.k] = d.k === 'maxChain' ? Math.max(1, v) : v; save(); };
   actions.gmMemory = (d, el) => { ks.memory = el.value; save(); };
@@ -1511,7 +1558,8 @@ function keeper() {
         <span class="row"><span class="tag ${ks.gm.paused ? '' : 'red'}">${ks.gm.paused ? '일시정지' : aiBusy ? '생각하는 중' : '진행 중'}</span>
         <button class="small ${ks.gm.paused ? 'primary' : ''}" data-act="gmPause">${ks.gm.paused ? '다시 시작' : '일시정지'}</button>
         <button class="small" data-act="gmNow" ${aiBusy ? 'disabled' : ''}>지금 진행</button></span></div>
-      <div class="small gold" id="autoWhy">${esc(autoWhy || '')}</div>
+      <div id="autoWhy" class="${ks.gm.paused ? 'bad' : 'gold'}" style="font-size:16px;padding:8px 10px;border:1px solid var(--line3);border-radius:6px">${esc(autoWhy || (ks.gm.paused ? `일시정지 중입니다${ks.pauseReason ? ` — ${ks.pauseReason}` : ''}. '다시 시작'을 누르세요.` : '상태를 확인하는 중…'))}</div>
+      ${!ks.gm.paused && !isHost() ? '<div class="row"><button class="small primary" data-act="gmTake">이 탭에서 진행</button><span class="small muted">다른 탭의 수호자 화면을 닫았다면 눌러 주세요.</span></div>' : ''}
       ${aiBusy ? `<div class="small gold" id="aiStatus">${esc(aiStatus || '묻는 중…')}</div>` : ''}
       <div class="row small">
         <label>말이 멈추고 기다릴 시간(초)<input type="number" min="3" value="${ks.gm.quietSec}" data-change="gmSet" data-k="quietSec" style="width:80px"></label>
@@ -1601,7 +1649,7 @@ function keeper() {
     const openReq = sortByAt(room.req).filter((r) => { const tos = r.to === 'all' ? invList().map((i) => i.pid) : [r.to]; return tos.some((p) => !(r.done && r.done[p])); });
     $app.innerHTML = `
     <header class="k-head">
-      <div class="row" style="gap:12px;align-items:baseline"><span class="title" style="font-size:28px">${esc(scn?.meta.title || '시나리오 없음')}</span><span style="font-family:var(--fell);font-style:italic;color:var(--muted)">${esc(scn?.meta.titleHanja || '')} · Keeper</span></div>
+      <div class="row" style="gap:12px;align-items:baseline"><span class="title" style="font-size:28px">${esc(scn?.meta.title || '시나리오 없음')}</span><span style="font-family:var(--fell);font-style:italic;color:var(--muted)">${esc(scn?.meta.titleHanja || '')} · Keeper</span><span class="mono small muted">${esc(window.__BUILD || 'dev')}</span></div>
       <div class="row"><span class="tag">방 ${ROOM}${LOCAL ? ' · 로컬' : ''}</span>${s ? `<span class="tag red">${esc(s.title)}</span>` : ''}${room.clock ? `<span class="tag red" data-clock>${esc(clockText())}</span>` : ''}</div>
       <div style="flex:1 1 auto"></div>
       <div class="row">
@@ -1632,7 +1680,13 @@ function keeper() {
             <label>모델<input value="${esc(ks.aiCfg.model)}" data-change="aiCfg" data-k="model" style="width:180px"></label>
             <label>예비 모델 (붐빌 때, 쉼표로 여러 개)<input value="${esc(ks.aiCfg.fallback || '')}" data-change="aiCfg" data-k="fallback" style="width:220px"></label>
             <label>reCAPTCHA 사이트 키<input value="${esc(ks.aiCfg.siteKey)}" data-change="aiCfg" data-k="siteKey" style="width:260px" placeholder="App Check용"></label>
-            <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text2)"><input type="checkbox" data-change="aiCfg" data-k="debug" ${ks.aiCfg.debug ? 'checked' : ''}> App Check 디버그 모드 (내 컴퓨터 시험용)</label>
+            <label>App Check 공급자<select data-change="aiCfg" data-k="acProvider"><option value="enterprise" ${ks.aiCfg.acProvider !== 'v3' ? 'selected' : ''}>reCAPTCHA Enterprise</option><option value="v3" ${ks.aiCfg.acProvider === 'v3' ? 'selected' : ''}>reCAPTCHA v3</option></select></label>
+            <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text2)"><input type="checkbox" data-change="aiCfg" data-k="debug" ${ks.aiCfg.debug ? 'checked' : ''}> App Check 디버그 모드 (reCAPTCHA 없이, 등록한 이 브라우저에서만)</label>
+            ${ks.aiCfg.debug ? `<div class="row small" style="width:100%">디버그 토큰 <code class="mono" style="user-select:all">${esc(ks.aiCfg.debugToken)}</code><button class="small" data-act="copyDebug">복사</button><span class="muted">→ 콘솔 App Check → 앱 ⋮ → 디버그 토큰 관리에 추가</span></div>` : ''}
+            <div class="stack" style="width:100%;border-top:1px dashed var(--line3);padding-top:8px">
+              <div class="row"><button class="small primary" data-act="acTest">App Check 시험</button><span class="small muted">설정을 바꿨다면 F5로 새로고침한 뒤 누르세요 · 웹 앱 ID <code class="mono">${esc(FIREBASE_CONFIG.appId)}</code></span></div>
+              ${acTest ? `<div class="small ${acTest.ok ? 'ok' : acTest.hint === '시험하는 중…' ? 'gold' : 'bad'}">${acTest.ok ? '성공' : acTest.hint === '시험하는 중…' ? '' : '실패'} ${esc(acTest.hint)}${acTest.code ? ` <span class="mono">(${esc(acTest.code)})</span>` : ''}</div>${acTest.error ? `<div class="small muted mono" style="word-break:break-all">${esc(acTest.error)}</div>` : ''}` : ''}
+            </div>
           </div>` : ''}
           ${ks.gm.mode === 'auto' && ks.aiOpen ? viewAuto() : ''}
           ${ks.aiOpen && ks.gm.mode !== 'auto' ? `
